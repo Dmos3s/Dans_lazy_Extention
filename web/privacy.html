@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — WebBrain</title>
+  <meta name="description" content="WebBrain privacy policy. Learn how local providers and WebBrain Cloud handle data, request metadata, payments, and analytics.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://webbrain.one/privacy">
+  <!-- Privacy is English-only for now; alternates point to locale homepages
+       so search engines still cluster the site's locale tree correctly. -->
+  <link rel="alternate" hreflang="en" href="https://webbrain.one/">
+  <link rel="alternate" hreflang="es" href="https://webbrain.one/es/">
+  <link rel="alternate" hreflang="fr" href="https://webbrain.one/fr/">
+  <link rel="alternate" hreflang="tr" href="https://webbrain.one/tr/">
+  <link rel="alternate" hreflang="zh" href="https://webbrain.one/zh/">
+  <link rel="alternate" hreflang="x-default" href="https://webbrain.one/">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+  <style>
+    :root {
+      --bg: #0b0e17;
+      --surface: #151822;
+      --border: #23283a;
+      --text: #e4e4ec;
+      --text-dim: #8b8fa4;
+      --accent: #6c63ff;
+      --accent2: #a78bfa;
+      --radius: 16px;
+      --max-w: 780px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      margin: 0;
+      padding: 0;
+    }
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(20px);
+      background: rgba(11,14,23,0.8);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .nav-brand span.emoji { -webkit-text-fill-color: initial; font-size: 22px; }
+    .nav-back {
+      font-size: 14px;
+      color: var(--text-dim);
+      padding: 6px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .nav-back:hover { color: var(--text); border-color: var(--accent); text-decoration: none; }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .lang-dropdown {
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+    .lang-dropdown:focus { outline: 2px solid rgba(108,99,255,0.25); outline-offset: 1px; }
+
+    .container {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 60px 24px 100px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      margin: 0 0 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .updated {
+      color: var(--text-dim);
+      font-size: 14px;
+      margin-bottom: 48px;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 40px 0 12px;
+      color: var(--text);
+    }
+    h2:first-of-type { margin-top: 0; }
+
+    p, li {
+      color: var(--text-dim);
+      font-size: 15px;
+      line-height: 1.8;
+    }
+    ul {
+      padding-left: 20px;
+      margin: 8px 0 16px;
+    }
+    li { margin-bottom: 6px; }
+    li strong { color: var(--text); font-weight: 600; }
+
+    .highlight-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin: 32px 0;
+    }
+    .highlight-box p { margin: 0; }
+    .highlight-box strong { color: var(--accent2); }
+
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      color: var(--text-dim);
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-yWGfwxkkKSVs-eTuaKYpy.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-brand" style="text-decoration:none;">
+      <span class="emoji">🧠</span> WebBrain<span style="opacity:0.5; font-weight:400;">.one</span>
+    </a>
+    <div class="nav-right">
+      <select class="lang-dropdown" id="lang-dropdown" aria-label="Select language" data-current="en">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="tr">Türkçe</option>
+        <option value="zh">中文</option>
+      </select>
+      <a href="/" class="nav-back">← Back to home</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: June 18, 2026</p>
+
+  <div class="highlight-box">
+    <p><strong>TL;DR:</strong> WebBrain can run with local or bring-your-own API providers, where your keys stay on your device and requests go directly to the provider you select. If you use WebBrain Cloud, the request is sent through our API so we can provide the hosted model, enforce quotas, process subscriptions, and keep privacy-preserving debug logs. WebBrain Cloud does not store prompt text, page content, screenshots, uploaded image data, or model responses by default.</p>
+  </div>
+
+  <h2>What WebBrain Is</h2>
+  <p>WebBrain is an open-source browser extension for Chrome and Firefox that connects to AI language model providers to help you read, analyze, and interact with web pages. You can use local models, your own provider API keys, or the hosted WebBrain Cloud provider.</p>
+
+  <h2>Data We Collect</h2>
+  <p>The data we receive depends on the provider mode you choose:</p>
+  <ul>
+    <li><strong>Local or bring-your-own API providers</strong> - WebBrain does not send data to WebBrain servers. Your API keys are stored locally in browser extension storage and requests go from your browser to the provider you configured.</li>
+    <li><strong>WebBrain Cloud</strong> - Requests are sent to <code>api.webbrain.one</code> and forwarded to our upstream model provider. We receive the prompt, page context, screenshots, images, and tool context needed to answer that request, but we do not store that request content by default.</li>
+    <li><strong>Quota and subscription records</strong> - We store a stable WebBrain device identifier for quota enforcement. For paid subscriptions, Stripe payment events are stored with subscription status and Stripe customer, subscription, checkout session, and payment link identifiers.</li>
+  </ul>
+
+  <h2>How Your Data Flows</h2>
+  <p>When you use WebBrain with a local model or your own API provider, data flows directly between your browser and the AI provider you have configured:</p>
+  <ul>
+    <li><strong>Page content</strong> — When you ask a question about a page, the relevant page content is sent directly from your browser to your chosen AI provider's API. WebBrain does not relay, intercept, or store this data.</li>
+    <li><strong>API keys</strong> — Your API keys are stored locally in your browser's extension storage (<code>chrome.storage.local</code> or <code>browser.storage.local</code>). They are never transmitted to us or any third party. They are only sent directly to the AI provider you have selected.</li>
+    <li><strong>Conversations</strong> — Your chat history exists only in your browser's memory during the session. It is not persisted to disk or sent anywhere other than to your configured AI provider for generating responses.</li>
+  </ul>
+  <p>When you use WebBrain Cloud, your browser sends the request to <code>api.webbrain.one</code>. WebBrain Cloud forwards it to OpenRouter and the selected upstream model provider, currently configured as StepFun. The model response is returned to your browser.</p>
+
+  <h2>WebBrain Cloud Logs</h2>
+  <p>WebBrain Cloud keeps metadata and error logs so we can debug failures, understand usage, and enforce the free and paid daily allowances. Default request logs may include:</p>
+  <ul>
+    <li><strong>Request metadata</strong> - request id, timestamp, endpoint, client label, request size, model id, stream flag, message count, tool count, image count, and latency.</li>
+    <li><strong>Quota metadata</strong> - hashed device id, tier, daily allowance, token counts, estimated request cost, and daily usage totals.</li>
+    <li><strong>Network/debug metadata</strong> - hashed IP address, hashed user agent, HTTP status, upstream status, and short upstream error snippets.</li>
+  </ul>
+  <p>Default request logs do <strong>not</strong> store prompt text, page content, screenshots, uploaded image data, or model responses. Raw request/response capture may be enabled temporarily for debugging, but it is disabled by default and should be retained only briefly.</p>
+  <p>Our web server or hosting provider may also keep standard access logs such as IP address, path, timestamp, and user agent for security and operations. These logs are separate from the WebBrain Cloud application request logs described above.</p>
+
+  <h2>Third-Party AI Providers</h2>
+  <p>WebBrain connects to the AI provider of your choice. Each provider has its own privacy policy and data handling practices:</p>
+  <ul>
+    <li><strong>OpenAI</strong> — <a href="https://openai.com/privacy" target="_blank">openai.com/privacy</a></li>
+    <li><strong>Google (Gemini)</strong> — <a href="https://ai.google.dev/terms" target="_blank">ai.google.dev/terms</a></li>
+    <li><strong>Anthropic (Claude)</strong> — <a href="https://www.anthropic.com/privacy" target="_blank">anthropic.com/privacy</a></li>
+    <li><strong>OpenRouter</strong> — <a href="https://openrouter.ai/privacy" target="_blank">openrouter.ai/privacy</a></li>
+  </ul>
+  <p>We encourage you to review the privacy policy of whichever provider you use. When using API keys (as opposed to consumer products), most providers do not use your data for training by default, but please verify with your chosen provider.</p>
+
+  <h2>Browser Permissions</h2>
+  <p>WebBrain requires certain browser permissions to function. Here is what each permission is used for and why:</p>
+  <ul>
+    <li><strong>activeTab / tabs</strong> — To read the content of the current page when you ask a question, and to manage per-tab conversations.</li>
+    <li><strong>scripting</strong> — To inject content scripts that can read page content and perform actions in Act mode.</li>
+    <li><strong>sidePanel (Chrome) / sidebar_action (Firefox)</strong> — To display the WebBrain chat interface as a side panel.</li>
+    <li><strong>storage</strong> — To save your settings (selected provider, API key, preferences) locally on your device.</li>
+  </ul>
+  <p>No permission is used to monitor, track, or collect your browsing activity.</p>
+
+  <h2>Act Mode</h2>
+  <p>When you enable Act mode, WebBrain can interact with web pages on your behalf (clicking, typing, scrolling, navigating). This is done via content scripts running in your browser — no data about these actions is sent to us. All actions are performed locally and are visible to you in real time. Act mode requires explicit activation and displays a visible warning banner.</p>
+
+  <h2>Cookies &amp; Analytics</h2>
+  <p>The WebBrain browser extension does not use cookies. The webbrain.one website uses Plausible Analytics for aggregate, privacy-friendly page-view metrics. There are no ads or tracking pixels. WebBrain Cloud API request logs are separate from website analytics.</p>
+
+  <h2>Children's Privacy</h2>
+  <p>WebBrain is not directed at children under 13. We do not knowingly collect any information from children.</p>
+
+  <h2>Open Source</h2>
+  <p>WebBrain is fully open source under the MIT License. You can audit the complete source code to verify all claims in this privacy policy:</p>
+  <p><a href="https://github.com/webbrain-one/webbrain" target="_blank">github.com/webbrain-one/webbrain</a></p>
+
+  <h2>Changes to This Policy</h2>
+  <p>If we make changes to this privacy policy, we will update the "Last updated" date at the top.</p>
+
+  <h2>Contact</h2>
+  <p>If you have questions about this privacy policy, you can reach us at:</p>
+  <ul>
+    <li>GitHub: <a href="https://github.com/webbrain-one/webbrain/issues" target="_blank">github.com/webbrain-one/webbrain/issues</a></li>
+    <li>Website: <a href="https://emresokullu.com" target="_blank">emresokullu.com</a></li>
+  </ul>
+</div>
+
+<footer>
+  &copy; 2026 <a href="https://emresokullu.com" target="_blank">Emre Sokullu</a>. WebBrain is open source under the MIT License.
+</footer>
+
+<!-- Language switcher. privacy.html is English-only, so selecting another
+     language takes the user to that locale's homepage rather than 404ing
+     on a non-existent /xx/privacy. -->
+<script>
+  (function () {
+    const LOCALES = ['en', 'es', 'fr', 'tr', 'zh'];
+    const sel = document.getElementById('lang-dropdown');
+    if (!sel) return;
+    sel.value = sel.dataset.current || 'en';
+    sel.addEventListener('change', function () {
+      const target = sel.value;
+      if (!LOCALES.includes(target)) return;
+      window.location.href = target === 'en' ? '/' : '/' + target + '/';
+    });
+  })();
+</script>
+
+</body>
+</html>

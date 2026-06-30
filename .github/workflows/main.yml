@@ -1,0 +1,47 @@
+name: Build and Package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/bump-version.mjs
+      - run: rm -rf dist/*
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json src/chrome/manifest.json src/firefox/manifest.json src/chrome/src/ui/settings.js src/firefox/src/ui/settings.js src/chrome/ARCHITECTURE.md src/firefox/ARCHITECTURE.md
+          git commit -m "chore: bump version"
+      - run: node scripts/build-zip.mjs
+      - run: |
+          git add -A dist
+          git commit -m "chore: rebuild dist zips"
+      - run: git push
+      - name: Get release metadata
+        id: release_meta
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          SHA=$(git rev-parse HEAD)
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "SHA=$SHA" >> "$GITHUB_OUTPUT"
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ steps.release_meta.outputs.VERSION }}
+          target_commitish: ${{ steps.release_meta.outputs.SHA }}
+          name: Release v${{ steps.release_meta.outputs.VERSION }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.zip

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    Single offscreen document hosting both:
+      • offscreen.js — fetch proxy for localhost LLM servers (existing)
+      • recorder.js  — tab capture + mic mix + MediaRecorder (new in v7.4)
+
+    Chrome MV3 only allows ONE offscreen document per extension at a time,
+    so the two responsibilities share this host. Each script binds its own
+    runtime.onMessage filter (`offscreen-fetch` vs `recorder-*`) so they
+    don't step on each other's messages.
+
+    Reasons declared at createDocument time cover both code paths up front:
+    LOCAL_STORAGE (fetch proxy), USER_MEDIA (mic), DISPLAY_MEDIA (tabCapture).
+  -->
+  <script src="offscreen.js"></script>
+  <script src="recorder.js"></script>
+</head>
+<body></body>
+</html>

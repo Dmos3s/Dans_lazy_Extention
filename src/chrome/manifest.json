@@ -1,0 +1,93 @@
+{
+  "manifest_version": 3,
+  "name": "WebBrain",
+  "version": "18.3.5",
+  "description": "Open-source AI browser agent — chat with pages, automate tasks, multi-provider LLM support.",
+  "permissions": [
+    "sidePanel",
+    "activeTab",
+    "contextMenus",
+    "tabs",
+    "tabGroups",
+    "scripting",
+    "storage",
+    "webNavigation",
+    "webRequest",
+    "debugger",
+    "downloads",
+    "alarms",
+    "unlimitedStorage",
+    "offscreen",
+    "privateNetworkAccess",
+    "tabCapture",
+    "clipboardWrite",
+    "clipboardRead"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "http://*/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src * data: blob:;"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "src/content/accessibility-tree.js",
+        "src/content/content.js",
+        "src/content/agent-visual-indicator.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.facebook.com/*",
+        "*://*.instagram.com/*",
+        "*://*.x.com/*",
+        "*://*.twitter.com/*",
+        "*://*.linkedin.com/*",
+        "*://*.reddit.com/*",
+        "*://*.youtube.com/*",
+        "*://youtu.be/*"
+      ],
+      "js": ["src/agent/social-media-downloader.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ],
+  "options_page": "src/ui/settings.html",
+  "action": {
+    "default_title": "WebBrain",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+W"
+      },
+      "description": "Open WebBrain panel"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["vendor/pdfjs/pdf.mjs", "vendor/pdfjs/pdf.worker.mjs", "vendor/turkish-deasciifier-patterns.json"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

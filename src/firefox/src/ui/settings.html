@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebBrain Settings</title>
+  <!-- Theme bootstrap — runs before <style> so data-theme is set before any
+       paint. External classic script because Firefox MV2's CSP forbids
+       inline scripts without an explicit unsafe-inline. -->
+  <script src="theme-bootstrap.js"></script>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --bg2: #16213e;
+      --bg3: #1e2746;
+      --text: #e8e8e8;
+      --text2: #a0a0b8;
+      --accent: #6c63ff;
+      --accent2: #5a52d5;
+      --border: rgba(255,255,255,0.08);
+      --success: #4caf50;
+      --error: #f44336;
+      --radius: 10px;
+      color-scheme: dark;
+    }
+    :root[data-theme="light"] {
+      --bg: #f7f1e6;
+      --bg2: #fffdf8;
+      --bg3: #fdf6e0;
+      --text: #2c1810;
+      --text2: #6b5b47;
+      --accent: #5b52e8;
+      --accent2: #4a42c4;
+      --border: rgba(89,55,25,0.15);
+      --success: #2d8866;
+      --error: #c5363c;
+      color-scheme: light;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { color: var(--text2); font-size: 13px; margin-bottom: 24px; }
+
+    h2 {
+      font-size: 14px;
+      margin: 28px 0 12px 0;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 600;
+    }
+    h2:first-of-type { margin-top: 0; }
+
+    /* Tab bar — sticky so it survives long provider lists. */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      margin: 4px 0 20px 0;
+      padding: 4px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      color: var(--text2);
+      border: none;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+    .tab-btn.active:hover { color: #fff; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    /* Kill the top margin on section headers inside panels so they don't
+       double up with the tab-bar spacing. */
+    .tab-panel h2:first-of-type { margin-top: 0; }
+
+    .settings-search {
+      margin: 0 0 14px;
+    }
+    .settings-search input {
+      width: 100%;
+      background: var(--bg2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font: inherit;
+      font-size: 13px;
+      outline: none;
+    }
+    .settings-search input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(108,99,255,0.22);
+    }
+    .general-search-empty {
+      color: var(--text2);
+      font-size: 12px;
+      padding: 8px 2px 14px;
+    }
+    .general-search-hidden { display: none !important; }
+
+    .advanced-settings {
+      margin: 22px 0 32px;
+      padding: 16px 0 22px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .advanced-settings summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      list-style: none;
+      user-select: none;
+    }
+    .advanced-settings summary::-webkit-details-marker { display: none; }
+    .advanced-settings summary::after {
+      content: '+';
+      color: var(--text2);
+      font-size: 18px;
+      line-height: 1;
+    }
+    .advanced-settings[open] summary::after { content: '-'; }
+    .advanced-settings-body { margin-top: 12px; }
+
+    .provider-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 14px;
+      transition: border-color 0.2s;
+    }
+    .provider-card.active { border-color: var(--accent); }
+    .provider-card.collapsed { padding: 12px 16px; }
+    .provider-card.collapsed .provider-header { margin-bottom: 0; }
+
+    .provider-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .provider-header-clickable { cursor: pointer; user-select: none; }
+    .provider-header-clickable:hover .provider-name { color: var(--accent); }
+    .provider-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .provider-chevron {
+      color: var(--text2);
+      font-size: 11px;
+      width: 10px;
+      display: inline-block;
+      transition: color 0.15s;
+    }
+    .provider-card.expanded .provider-chevron { color: var(--accent); }
+    .provider-name { font-weight: 600; font-size: 14px; }
+    .provider-type { color: var(--text2); font-size: 11px; }
+
+    .provider-category-badge {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.06);
+      color: var(--text2);
+    }
+    .provider-category-local  { background: rgba(76, 175, 80, 0.15); color: #8fd896; }
+    .provider-category-cloud  { background: rgba(108, 99, 255, 0.15); color: #a8a3ff; }
+    .provider-category-router { background: rgba(255, 152, 0, 0.15); color: #ffc870; }
+
+    /* Configured model — shown in the collapsed-card header so the user can
+       see at a glance which model is set for each provider. Mono font
+       signals "this is an identifier", and dimming keeps it from competing
+       with the provider's own name. max-width + ellipsis so long
+       OpenRouter-style names don't push the active-indicator off the row. */
+    .provider-model {
+      color: var(--text2);
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .provider-filter-bar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: -2px 0 12px 0;
+      padding: 0;
+    }
+    .provider-filter-pill {
+      background: transparent;
+      color: var(--text2);
+      border: none;
+      border-radius: 0;
+      padding: 2px 0 3px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      cursor: pointer;
+      transition: color 0.12s;
+    }
+    .provider-filter-pill:hover { color: var(--text); }
+    .provider-filter-pill.active {
+      color: var(--accent);
+    }
+    .provider-filter-pill.active:hover { color: var(--accent); }
+    .provider-filter-empty {
+      padding: 16px;
+      text-align: center;
+      color: var(--text2);
+      font-size: 13px;
+      background: var(--bg2);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+    }
+
+    .field { margin-bottom: 10px; }
+    .field label {
+      display: block;
+      font-size: 11px;
+      color: var(--text2);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .field input, .field select {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--accent);
+    }
+    .field input[type="password"] {
+      font-family: monospace;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    button {
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent2); }
+
+    .btn-secondary {
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.05); }
+
+    .test-result {
+      margin-top: 8px;
+      font-size: 11px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      display: none;
+    }
+    .test-result.show { display: block; }
+    .test-result.ok { background: rgba(76,175,80,0.12); color: var(--success); }
+    .test-result.fail { background: rgba(244,67,54,0.12); color: var(--error); }
+
+    /* Toggle switch */
+    .setting-row {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .setting-info {
+      flex: 1;
+    }
+    .setting-label {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .setting-desc {
+      font-size: 11px;
+      color: var(--text2);
+      line-height: 1.4;
+    }
+
+    .toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 2px;
+      top: 2px;
+      background: var(--text2);
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .toggle input:checked + .toggle-slider {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .toggle input:checked + .toggle-slider::before {
+      transform: translateX(18px);
+      background: #fff;
+    }
+
+    .info-box {
+      background: rgba(108,99,255,0.08);
+      border: 1px solid rgba(108,99,255,0.2);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--text2);
+      line-height: 1.5;
+    }
+    .info-box strong { color: var(--text); }
+    .info-box code {
+      background: rgba(0,0,0,0.3);
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+
+    .account-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .account-info { flex: 1; min-width: 0; }
+    .account-email {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .account-email.not-signed-in { color: var(--text2); font-weight: 400; }
+    .account-provider {
+      font-size: 11px;
+      color: var(--accent);
+      margin-top: 2px;
+    }
+    .btn-sign-in {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-sign-in:hover { background: var(--accent2); }
+    .btn-sign-in:disabled { opacity: 0.55; cursor: default; transform: none; }
+    .btn-sign-out {
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-sign-out:hover { background: rgba(255,255,255,0.05); }
+
+    /* Light-theme overrides for places that bypassed the variable system. */
+    :root[data-theme="light"] .provider-category-badge  { background: rgba(89,55,25,0.07); }
+    :root[data-theme="light"] .provider-category-local  { color: #1f7a4a; }
+    :root[data-theme="light"] .provider-category-cloud  { color: #4a42c4; }
+    :root[data-theme="light"] .provider-category-router { color: #a85f00; }
+    :root[data-theme="light"] .btn-secondary:hover { background: rgba(89,55,25,0.06); }
+    :root[data-theme="light"] .btn-sign-out:hover  { background: rgba(89,55,25,0.06); }
+    :root[data-theme="light"] .info-box code       { background: rgba(89,55,25,0.08); }
+  </style>
+</head>
+<body>
+  <h1 data-i18n="st.title"></h1>
+  <p class="subtitle" id="subtitle"></p>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab-btn" type="button" role="tab" data-tab="display" data-i18n="st.tab.display"></button>
+    <button class="tab-btn active" type="button" role="tab" data-tab="providers" data-i18n="st.tab.providers"></button>
+    <button class="tab-btn" type="button" role="tab" data-tab="multimodal" data-i18n="st.tab.multimodal"></button>
+    <button class="tab-btn" type="button" role="tab" data-tab="permissions" data-i18n="st.tab.permissions"></button>
+  </nav>
+
+  <section class="tab-panel" data-panel="display" role="tabpanel">
+    <div id="display-settings">
+      <div class="settings-search">
+        <input type="search" id="input-general-search" autocomplete="off" spellcheck="false" data-i18n-placeholder="st.display.search.placeholder">
+      </div>
+      <div class="general-search-empty" id="general-search-empty" hidden data-i18n="st.display.search.empty"></div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label" data-i18n="st.display.language.label"></div>
+          <div class="setting-desc" data-i18n="st.display.language.desc"></div>
+        </div>
+        <select id="select-language" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:inherit;cursor:pointer;"></select>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label" data-i18n="st.display.theme.label"></div>
+          <div class="setting-desc" data-i18n="st.display.theme.desc"></div>
+        </div>
+        <select id="select-theme" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:inherit;cursor:pointer;">
+          <option value="system" data-i18n="st.display.theme.system"></option>
+          <option value="light" data-i18n="st.display.theme.light"></option>
+          <option value="dark" data-i18n="st.display.theme.dark"></option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label" data-i18n="st.display.verbose.label"></div>
+          <div class="setting-desc" data-i18n="st.display.verbose.desc"></div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-verbose">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label" data-i18n="st.display.plan_before_act.label"></div>
+          <div class="setting-desc" data-i18n="st.display.plan_before_act.desc"></div>
+        </div>
+        <select id="select-plan-before-act-mode">
+          <option value="off" data-i18n="st.display.plan_before_act.off"></option>
+          <option value="try" data-i18n="st.display.plan_before_act.try"></option>
+          <option value="strict" data-i18n="st.display.plan_before_act.strict"></option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label" data-i18n="st.display.scheduled_tasks.label"></div>
+          <div class="setting-desc" data-i18n="st.display.scheduled_tasks.desc"></div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-scheduled-tasks" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label" data-i18n="st.display.scheduled_confirm.label"></div>
+          <div class="setting-desc" data-i18n="st.display.scheduled_confirm.desc"></div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-scheduled-confirm" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label" data-i18n="st.display.notify_sound.label"></div>
+          <div class="setting-desc" data-i18n="st.display.notify_sound.desc"></div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-notify-sound" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label" data-i18n="st.display.completion_confetti.label"></div>
+          <div class="setting-desc" data-i18n="st.display.completion_confetti.desc"></div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-completion-confetti" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label"><span data-i18n="st.display.max_steps.label"></span> <span id="steps-value" style="color:var(--accent);font-weight:700;margin-left:4px;">50</span></div>
+          <div class="setting-desc" data-i18n="st.display.max_steps.desc"></div>
+        </div>
+        <input type="range" id="range-max-steps" min="5" max="200" value="130" step="5"
+               style="width:120px;accent-color:var(--accent);cursor:pointer;">
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label"><span data-i18n="st.display.request_timeout.label"></span> <span id="timeout-value" style="color:var(--accent);font-weight:700;margin-left:4px;">120s</span></div>
+          <div class="setting-desc" data-i18n="st.display.request_timeout.desc"></div>
+        </div>
+        <input type="range" id="range-request-timeout" min="10" max="600" value="120" step="5"
+               style="width:120px;accent-color:var(--accent);cursor:pointer;">
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label" data-i18n="st.display.traces_link.label"></div>
+          <div class="setting-desc" data-i18n="st.display.traces_link.desc"></div>
+        </div>
+        <a id="btn-open-traces" href="traces.html" target="_blank"
+           style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;"
+           data-i18n="st.display.traces_link.open"></a>
+      </div>
+
+      <details class="advanced-settings">
+        <summary data-i18n="st.display.advanced"></summary>
+        <div class="advanced-settings-body">
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label" data-i18n="st.display.screenshot.label"></div>
+              <div class="setting-desc" data-i18n="st.display.screenshot.desc"></div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-screenshot-fallback">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label" data-i18n="st.display.site_adapters.label"></div>
+              <div class="setting-desc" data-i18n="st.display.site_adapters.desc"></div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-site-adapters" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label" data-i18n="st.display.api_mutation_observer.label"></div>
+              <div class="setting-desc" data-i18n="st.display.api_mutation_observer.desc"></div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-api-mutation-observer">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label" data-i18n="st.display.auto_screenshot.label"></div>
+              <div class="setting-desc" data-i18n="st.display.auto_screenshot.desc"></div>
+            </div>
+            <select id="select-auto-screenshot" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:inherit;cursor:pointer;">
+              <option value="off" data-i18n="st.display.auto_screenshot.off"></option>
+              <option value="navigation" data-i18n="st.display.auto_screenshot.navigation"></option>
+              <option value="state_change" data-i18n="st.display.auto_screenshot.state_change"></option>
+              <option value="every_step" data-i18n="st.display.auto_screenshot.every_step"></option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label" data-i18n="st.display.tracing.label"></div>
+              <div class="setting-desc" data-i18n-html="st.display.tracing.desc_html"></div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-tracing">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label" data-i18n="st.display.cost_session_limit.label"></div>
+              <div class="setting-desc" data-i18n="st.display.cost_session_limit.desc"></div>
+            </div>
+            <label style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text2);font-size:12px;">
+              <span>$</span>
+              <input type="number" id="input-cost-session-limit" min="0" step="0.01" value="10"
+                     style="width:76px;background:transparent;border:0;color:var(--text);font:inherit;outline:none;">
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label"><span data-i18n="st.display.cost_total_limit.label"></span> <span id="cost-spent-value" style="color:var(--accent);font-weight:700;margin-left:4px;">$0.00 / $10.00</span></div>
+              <div class="setting-desc" data-i18n="st.display.cost_total_limit.desc"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+              <label style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text2);font-size:12px;">
+                <span>$</span>
+                <input type="number" id="input-cost-total-limit" min="0" step="0.01" value="10"
+                       style="width:76px;background:transparent;border:0;color:var(--text);font:inherit;outline:none;">
+              </label>
+              <button type="button" id="btn-reset-cost-spend"
+                      style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;"
+                      data-i18n="st.display.cost_reset"></button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label" data-i18n="st.display.strict_secret.label"></div>
+              <div class="setting-desc" data-i18n="st.display.strict_secret.desc"></div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-strict-secret">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label" data-i18n="st.display.allow_local_network.label"></div>
+              <div class="setting-desc" data-i18n="st.display.allow_local_network.desc"></div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-allow-local-network">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="provider-card" id="profile-card">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.55;" data-i18n-html="st.profile.desc_html"></div>
+
+            <div class="setting-row" style="margin-bottom:12px;">
+              <div class="setting-info">
+                <div class="setting-label" data-i18n="st.profile.enabled.label"></div>
+                <div class="setting-desc" data-i18n="st.profile.enabled.desc"></div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="toggle-profile-enabled">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="field">
+              <label data-i18n="st.profile.text.label"></label>
+              <textarea id="profile-text"
+                        rows="8"
+                        data-i18n-placeholder="st.profile.text.placeholder"
+                        style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.5;outline:none;resize:vertical;"></textarea>
+            </div>
+            <div class="btn-row">
+              <button class="btn-primary" id="btn-save-profile" data-i18n="st.profile.save"></button>
+              <button class="btn-secondary" id="btn-clear-profile" data-i18n="st.profile.clear"></button>
+            </div>
+            <div class="test-result" id="test-profile"></div>
+
+            <div class="info-box" style="margin-top:16px;" data-i18n-html="st.profile.security_html"></div>
+          </div>
+
+          <div class="provider-card" id="captcha-card">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.55;" data-i18n-html="st.captcha.desc_html"></div>
+
+            <div class="setting-row" style="margin-bottom:12px;">
+              <div class="setting-info">
+                <div class="setting-label" data-i18n="st.captcha.enabled.label"></div>
+                <div class="setting-desc" data-i18n="st.captcha.enabled.desc"></div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="toggle-captcha-enabled">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="field">
+              <label data-i18n="st.captcha.api_key.label"></label>
+              <input type="password" id="captcha-api-key" placeholder="CAP-XXXXXXXXXXXXXXXXXXXX">
+            </div>
+
+            <div class="btn-row">
+              <button class="btn-primary" id="btn-save-captcha" data-i18n="st.captcha.save"></button>
+              <button class="btn-secondary" id="btn-test-captcha" data-i18n="st.captcha.check_balance"></button>
+              <button class="btn-secondary" id="btn-clear-captcha" data-i18n="st.captcha.clear"></button>
+            </div>
+            <div class="test-result" id="test-captcha"></div>
+
+            <div class="info-box" style="margin-top:16px;" data-i18n-html="st.captcha.security_html"></div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="tab-panel active" data-panel="providers" role="tabpanel">
+    <div id="providers"></div>
+
+    <div class="info-box" data-i18n-html="st.providers.info.html"></div>
+  </section>
+
+  <section class="tab-panel" data-panel="multimodal" role="tabpanel">
+    <h3 data-i18n="st.vision.heading" style="margin:0 0 12px;font-size:14px;font-weight:600;"></h3>
+    <div class="provider-card" id="vision-card">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;" data-i18n="st.vision.desc"></div>
+      <div class="field">
+        <label data-i18n="st.provider.field.api_base_url"></label>
+        <input type="text" id="vision-base-url" placeholder="https://api.openai.com/v1">
+      </div>
+      <div class="field">
+        <label data-i18n="st.provider.field.api_key"></label>
+        <input type="password" id="vision-api-key" placeholder="sk-...">
+      </div>
+      <div class="field">
+        <label data-i18n="st.provider.field.model"></label>
+        <input type="text" id="vision-model" placeholder="gpt-4o">
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" id="btn-save-vision" data-i18n="st.vision.save"></button>
+        <button class="btn-secondary" id="btn-test-vision" data-i18n="st.vision.test"></button>
+        <button class="btn-secondary" id="btn-clear-vision" data-i18n="st.vision.clear"></button>
+      </div>
+      <div class="test-result" id="test-vision"></div>
+    </div>
+
+    <h3 data-i18n="st.transcription.heading" style="margin:24px 0 12px;font-size:14px;font-weight:600;"></h3>
+    <div class="provider-card" id="transcription-card">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;" data-i18n="st.transcription.desc"></div>
+      <div class="field">
+        <label data-i18n="st.provider.field.api_base_url"></label>
+        <input type="text" id="transcription-base-url" placeholder="https://api.openai.com/v1">
+      </div>
+      <div class="field">
+        <label data-i18n="st.provider.field.api_key"></label>
+        <input type="password" id="transcription-api-key" placeholder="sk-...">
+      </div>
+      <div class="field">
+        <label data-i18n="st.provider.field.model"></label>
+        <input type="text" id="transcription-model" placeholder="whisper-1">
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" id="btn-save-transcription" data-i18n="st.transcription.save"></button>
+        <button class="btn-secondary" id="btn-test-transcription" data-i18n="st.transcription.test"></button>
+        <button class="btn-secondary" id="btn-clear-transcription" data-i18n="st.transcription.clear"></button>
+      </div>
+      <div class="test-result" id="test-transcription"></div>
+    </div>
+  </section>
+
+  <section class="tab-panel" data-panel="permissions" role="tabpanel">
+    <div class="provider-card" id="permissions-card">
+      <div class="setting-row" style="margin-bottom:14px;">
+        <div class="setting-info">
+          <div class="setting-label" data-i18n="st.perms.gate.label"></div>
+          <div class="setting-desc" data-i18n="st.perms.gate.desc"></div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-permission-gate" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="info-box" id="permission-gate-warning" style="display:none;margin-bottom:16px;" data-i18n="st.perms.gate.warning"></div>
+
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.55;" data-i18n="st.perms.desc"></div>
+      <div id="permissions-list"></div>
+      <div class="btn-row" id="permissions-actions" style="margin-top:14px;display:none;">
+        <button class="btn-secondary" id="btn-clear-all-permissions" data-i18n="st.perms.clear_all"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tab switcher must be an external script — Manifest V3's default
+       CSP (`script-src 'self'`) blocks inline <script> execution. -->
+  <script src="settings-tabs.js"></script>
+  <script src="settings.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebBrain Blog</title>
+  <meta name="description" content="Engineering notes from WebBrain - the open-source AI browser agent.">
+  <meta property="og:title" content="WebBrain Blog">
+  <meta property="og:description" content="Engineering notes from WebBrain - the open-source AI browser agent.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://webbrain.one/blog">
+  <meta property="og:image" content="https://webbrain.one/og-image.png">
+  <meta property="og:image:secure_url" content="https://webbrain.one/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="WebBrain brain emoji icon">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="WebBrain Blog">
+  <meta name="twitter:description" content="Engineering notes from WebBrain.">
+  <meta name="twitter:image" content="https://webbrain.one/twitter-image.png">
+  <meta name="twitter:image:alt" content="WebBrain brain emoji icon">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="canonical" href="https://webbrain.one/blog">
+  <!-- Blog is English-only; alternates point to locale homepages. -->
+  <link rel="alternate" hreflang="en" href="https://webbrain.one/">
+  <link rel="alternate" hreflang="es" href="https://webbrain.one/es/">
+  <link rel="alternate" hreflang="fr" href="https://webbrain.one/fr/">
+  <link rel="alternate" hreflang="tr" href="https://webbrain.one/tr/">
+  <link rel="alternate" hreflang="zh" href="https://webbrain.one/zh/">
+  <link rel="alternate" hreflang="ru" href="https://webbrain.one/ru/">
+  <link rel="alternate" hreflang="uk" href="https://webbrain.one/uk/">
+  <link rel="alternate" hreflang="ar" href="https://webbrain.one/ar/">
+  <link rel="alternate" hreflang="ja" href="https://webbrain.one/ja/">
+  <link rel="alternate" hreflang="ko" href="https://webbrain.one/ko/">
+  <link rel="alternate" hreflang="id" href="https://webbrain.one/id/">
+  <link rel="alternate" hreflang="th" href="https://webbrain.one/th/">
+  <link rel="alternate" hreflang="ms" href="https://webbrain.one/ms/">
+  <link rel="alternate" hreflang="tl" href="https://webbrain.one/tl/">
+  <link rel="alternate" hreflang="x-default" href="https://webbrain.one/">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0b0e17;
+      --bg-card: #111827;
+      --bg-card-hover: #1a2233;
+      --surface: #161d2e;
+      --border: rgba(255,255,255,0.07);
+      --text: #e4e4ec;
+      --text-dim: #8b8fa4;
+      --accent: #6c63ff;
+      --accent-glow: rgba(108,99,255,0.25);
+      --accent2: #a78bfa;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --tint-soft: rgba(255,255,255,0.05);
+      --tint-soft-2: rgba(255,255,255,0.04);
+      --tint-medium: rgba(255,255,255,0.08);
+      --nav-bg: rgba(11,14,23,0.85);
+      --code-bg: #0a0e17;
+      --inline-code-bg: rgba(255,255,255,0.06);
+      --shadow-strong: rgba(0,0,0,0.40);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --max-w: 760px;
+      color-scheme: dark;
+    }
+    :root[data-theme="light"] {
+      --bg: #f7f1e6;
+      --bg-card: #fffdf8;
+      --bg-card-hover: #f2e9d4;
+      --surface: #ede2cb;
+      --border: rgba(89,55,25,0.15);
+      --text: #2c1810;
+      --text-dim: #6b5b47;
+      --accent: #5b52e8;
+      --accent-glow: rgba(91,82,232,0.20);
+      --accent2: #7c6ce6;
+      --success: #2d8866;
+      --warning: #9a6500;
+      --danger: #b74747;
+      --tint-soft: rgba(89,55,25,0.05);
+      --tint-soft-2: rgba(89,55,25,0.07);
+      --tint-medium: rgba(89,55,25,0.10);
+      --nav-bg: rgba(247,241,230,0.85);
+      --code-bg: #fff7e6;
+      --inline-code-bg: rgba(89,55,25,0.08);
+      --shadow-strong: rgba(89,55,25,0.18);
+      color-scheme: light;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      font-size: 17px;
+      overflow-x: hidden;
+    }
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .glow-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .glow-bg::before,
+    .glow-bg::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.26;
+    }
+    .glow-bg::before {
+      width: 500px;
+      height: 500px;
+      background: var(--accent);
+      top: -220px;
+      left: -160px;
+    }
+    .glow-bg::after {
+      width: 500px;
+      height: 500px;
+      background: var(--accent2);
+      right: -180px;
+      bottom: -230px;
+      opacity: 0.18;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--nav-bg);
+      backdrop-filter: saturate(160%) blur(12px);
+      -webkit-backdrop-filter: saturate(160%) blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .nav-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .nav-brand:hover { text-decoration: none; }
+    .nav-brand .domain { opacity: 0.5; font-weight: 400; }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 16px;
+      min-width: 0;
+    }
+    .nav-links a {
+      color: var(--text-dim);
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .lang-dropdown {
+      background: var(--tint-soft);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 13px;
+      max-width: 120px;
+    }
+    .lang-dropdown:focus { outline: 2px solid var(--accent-glow); outline-offset: 1px; }
+    .lang-dropdown option { background-color: var(--bg-card-hover); color: var(--text); }
+    .theme-toggle {
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--tint-soft-2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: pointer;
+      color: var(--text-dim);
+      transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
+    }
+    .theme-toggle:hover {
+      background: var(--tint-medium);
+      border-color: var(--accent);
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+    .theme-toggle:focus-visible {
+      outline: 2px solid var(--accent2);
+      outline-offset: 2px;
+    }
+    .theme-toggle svg { width: 16px; height: 16px; display: block; }
+    .theme-toggle .icon-sun { display: block; }
+    .theme-toggle .icon-moon { display: none; }
+    :root[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+    :root[data-theme="light"] .theme-toggle .icon-moon { display: block; }
+    main,
+    article {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 64px 24px 80px;
+    }
+    .page-label {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      color: var(--accent2);
+      padding: 4px 10px;
+      border: 1px solid color-mix(in srgb, var(--accent2) 28%, transparent);
+      border-radius: 999px;
+      margin-bottom: 18px;
+    }
+    h1 {
+      font-size: 38px;
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: 0;
+      margin-bottom: 16px;
+    }
+    .page-sub,
+    .lede {
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+    .page-sub {
+      font-size: 17px;
+      max-width: 580px;
+      margin-bottom: 48px;
+    }
+    .lede {
+      font-size: 19px;
+      margin-bottom: 40px;
+    }
+    .meta {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+      letter-spacing: 0;
+    }
+    h2 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 48px;
+      margin-bottom: 14px;
+      letter-spacing: 0;
+    }
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 32px;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    h4, h5, h6 {
+      color: var(--text);
+      margin-top: 28px;
+      margin-bottom: 10px;
+      line-height: 1.35;
+    }
+    p { margin-bottom: 16px; }
+    ul, ol { margin: 0 0 16px 20px; }
+    li { margin-bottom: 6px; }
+    code {
+      font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+      font-size: 0.88em;
+      background: var(--inline-code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: color-mix(in srgb, var(--accent2) 80%, var(--text));
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      overflow-x: auto;
+      margin: 20px 0;
+      font-size: 14px;
+      line-height: 1.55;
+      box-shadow: 0 18px 60px var(--shadow-strong);
+    }
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+    blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 4px 0 4px 18px;
+      margin: 20px 0;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+    blockquote p:last-child { margin-bottom: 0; }
+    hr {
+      border: 0;
+      border-top: 1px solid var(--border);
+      margin: 36px 0;
+    }
+    article img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      margin: 24px 0;
+    }
+    .table-wrap { overflow-x: auto; margin: 24px 0; }
+    table {
+      width: 100%;
+      min-width: 560px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      color: var(--text-dim);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      background: var(--tint-soft-2);
+    }
+    td code { font-size: 12px; }
+    .win { color: var(--success); font-weight: 600; }
+    .lose { color: var(--danger); }
+    .meh { color: var(--warning); }
+    .callout {
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin: 24px 0;
+      font-size: 15px;
+      line-height: 1.65;
+      color: var(--text-dim);
+    }
+    .callout strong { color: var(--text); }
+    .author-box {
+      margin-top: 64px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 14px;
+    }
+    .post-list { display: flex; flex-direction: column; gap: 18px; }
+    .post-card {
+      display: block;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px 26px;
+      transition: background 0.18s, border-color 0.18s, transform 0.18s;
+    }
+    .post-card:hover {
+      background: var(--bg-card-hover);
+      border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+      transform: translateY(-1px);
+      text-decoration: none;
+    }
+    .post-meta {
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 0;
+      margin-bottom: 8px;
+    }
+    .post-title {
+      font-size: 21px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+      letter-spacing: 0;
+      line-height: 1.35;
+    }
+    .post-excerpt {
+      color: var(--text-dim);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    footer {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 40px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+    footer a { color: var(--text-dim); }
+    footer a:hover { color: var(--text); }
+    @media (max-width: 700px) {
+      body { font-size: 16px; }
+      .nav-inner { padding: 14px 20px; align-items: flex-start; }
+      .nav-links { gap: 12px; flex-wrap: wrap; }
+      .lang-dropdown { display: none; }
+      h1 { font-size: 28px; }
+      .lede { font-size: 16px; }
+      .page-sub { font-size: 15px; }
+      main, article { padding: 48px 20px 64px; }
+      h2 { font-size: 20px; margin-top: 36px; }
+      .post-card { padding: 20px; }
+      .post-title { font-size: 19px; }
+      footer { flex-direction: column; padding: 32px 20px; }
+    }
+    @media (max-width: 420px) {
+      .nav-inner { gap: 12px; }
+      .nav-links a[href="https://github.com/webbrain-one/webbrain"] { display: none; }
+      .theme-toggle { width: 28px; height: 28px; }
+    }
+  </style>
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('webbrain-theme');
+        var theme = (saved === 'light' || saved === 'dark')
+          ? saved
+          : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (_) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  "name": "WebBrain Blog",
+  "description": "Engineering notes from WebBrain - the open-source AI browser agent.",
+  "url": "https://webbrain.one/blog",
+  "image": "https://webbrain.one/og-image.png",
+  "blogPost": [
+    {
+      "@type": "BlogPosting",
+      "headline": "Ornith-1.0-35B in WebBrain's frozen planner benchmark",
+      "url": "https://webbrain.one/blog/ornith-35b-webbrain-planner-benchmark",
+      "datePublished": "2026-06-26",
+      "description": "We ran Ornith-1.0-35B through WebBrain's frozen 100-case browser-agent first-tool benchmark after DeepReinforce's model card claimed wins over Qwen3.6-35B and Gemma4-31B on agentic coding benchmarks.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "Tiny raw LFM 2.5 checkpoints in WebBrain's frozen planner benchmark",
+      "url": "https://webbrain.one/blog/tiny-lfm25-raw-planner-benchmark",
+      "datePublished": "2026-06-26",
+      "description": "We ran two tiny raw Liquid LFM 2.5 checkpoints, 230M and 350M, through WebBrain's frozen 100-case browser-agent first-tool benchmark on a local OpenAI-compatible endpoint.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "MiniMax M3 and WebBrain Cloud 1.0 enter the frozen WebBrain planner benchmark",
+      "url": "https://webbrain.one/blog/minimax-m3-webbrain-cloud-tool-calling",
+      "datePublished": "2026-06-21",
+      "description": "We ran MiniMax M3 through OpenRouter and WebBrain Cloud 1.0 through api.webbrain.one against WebBrain's frozen 100-case browser-agent first-tool benchmark, then updated the Sonnet 4.6 comparison table.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "Gemma 4 12B QAT is fast enough for WebBrain, but Qwen 3.5 9B still routes a little better",
+      "url": "https://webbrain.one/blog/gemma-4-12b-qat-planner-benchmark",
+      "datePublished": "2026-06-20",
+      "description": "We tested google/gemma-4-12B-it-qat-w4a16-ct through vLLM against WebBrain's frozen first-tool-call browser-agent harness at concurrency 8, then ran the same vision probe used in earlier local-model posts.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "Gemma 4 31B QAT quietly becomes the best local Gemma planner we have tested",
+      "url": "https://webbrain.one/blog/gemma-4-31b-qat-planner-benchmark",
+      "datePublished": "2026-06-20",
+      "description": "We tested google/gemma-4-31B-it-qat-w4a16-ct through vLLM against WebBrain's frozen first-tool-call browser-agent harness. It improves over the older Gemma 4 31B int4 run and narrowly edges Qwen 3.6 27B on strict first-action quality while running much faster.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "DiffusionGemma hits 0.35s median in the WebBrain local planner bench",
+      "url": "https://webbrain.one/blog/local-planner-q4-june-2026",
+      "datePublished": "2026-06-19",
+      "description": "DiffusionGemma, Gemma 4 12B Coder, Cohere North-Mini-Code, and VibeThinker-3B in WebBrain's frozen first-tool-call browser-agent harness.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "WebBrain Cloud is live, and these are the local models we are benchmarking next",
+      "url": "https://webbrain.one/blog/webbrain-cloud-local-model-benchmarks",
+      "datePublished": "2026-06-19",
+      "description": "WebBrain Cloud is now live in the latest main branch, so you can try WebBrain without running a local LLM or bringing your own API key. The hosted route is request-limited, but it is enough to see how the browser agent feels. Next up: benchmarks for VibeThinker-3B, Gemma 4 12B Coder, DiffusionGemma 26B, and Cohere North-Mini-Code 30B across practical local-VRAM bands.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "Molmo2-8B is truly open. Our current serving path could not give it a fair browser-tool test.",
+      "url": "https://webbrain.one/blog/molmo2-8b-tool-calling",
+      "datePublished": "2026-06-12",
+      "description": "We tried to run Molmo2-8B through WebBrain's frozen 100-case browser-agent tool-calling benchmark. The open-source story is excellent: open weights, data, and recipe. The caveat: LM Studio's Molmo path rejected native structured tools, so the only successful run used a text-call compatibility shim.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "How WebBrain keeps a local AI agent from getting hijacked by the page it's reading",
+      "url": "https://webbrain.one/blog/agent-security-model",
+      "datePublished": "2026-06-02",
+      "description": "An act-mode browser agent can click, type, and submit as you — which means a malicious page that confuses the model is a real attack. Here's WebBrain's security model, the adversarial tests behind it, and what we found about model size and prompt injection.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "Liquid LFM 2.5-8B-A1B on browser tool calling: where the new on-device MoE fits",
+      "url": "https://webbrain.one/blog/liquid-lfm25-tool-calling",
+      "datePublished": "2026-05-31",
+      "description": "We added Liquid AI's LFM 2.5-8B-A1B (8.3B total / 1.5B active MoE) to our browser-agent tool-calling benchmark. Against Claude Sonnet 4.6 it beats both small Qwens but loses to Gemma 4-E2B. Plus: a tool-schema drift bug that changes how we score everything, and why the license asymmetry (LFM's $10M revenue cliff vs Gemma 4's plain Apache 2.0) tilts the distillation call to Gemma.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "13 LLMs, 100 browser tasks, two baselines: which model actually picks the right tool?",
+      "url": "https://webbrain.one/blog/llm-tool-calling-benchmark",
+      "datePublished": "2026-05-23",
+      "description": "We benchmarked 13 local and API LLMs on 100 real browser-agent tool-calling tasks against both consensus voting and Claude Sonnet 4.6. The winner depends on which question you ask.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "Pruning Gemma 4 26B-A4B to run on small GPUs",
+      "url": "https://webbrain.one/blog/gemma4-turkish-pruning",
+      "datePublished": "2026-05-19",
+      "description": "A practical Gemma 4 26B-A4B expert-pruning run: remove low-activation experts for Turkish+English workloads, then recover quality with a short LoRA heal.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "Round 4: Qwen 3.5-9B-int4 punches above its weight — when 9B int4 beats 308B IQ3_S on affordance",
+      "url": "https://webbrain.one/blog/vision-shootout-round-4",
+      "datePublished": "2026-05-07",
+      "description": "Round 4 of the vision-model shootout for browser agents. A 9B int4 Qwen 3.5 model classifies the email-chip dropdown explicitly — something the 308B MiMo IQ3_S and the larger Qwen 3.6-A3B both missed. Cheapest image tokens after Gemma. The catch: it loses the red-border visual cue and joins the 'Unknowns: None' club.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "Round 3: Xiaomi MiMo V2.5 enters the vision shootout — and joins the \"Unknowns: None\" club",
+      "url": "https://webbrain.one/blog/vision-shootout-round-3",
+      "datePublished": "2026-05-07",
+      "description": "A third round of vision-model benchmarking for browser agents. Xiaomi's MiMo-V2.5 — the \"looks promising\" model from our research notes — sits down at the same probe with the same Google sign-in screen. Strong OCR, expensive image tokens, no calibrated uncertainty.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "Xiaomi MiMo V2.5 Pro vs \"V2.5 Flash\": should WebBrain add both?",
+      "url": "https://webbrain.one/blog/mimo-v25-pro-vs-flash",
+      "datePublished": "2026-04-30",
+      "description": "Research notes on Xiaomi's MiMo V2.5 Pro and the V2.5/Flash-style tier: why these multimodal models look promising for WebBrain compared with text-only alternatives, and how they slot into our routing policy alongside Qwen 3.6.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "Round 2: Nemotron Omni 30B vs Qwen 3.6 — does cheaper image tokens beat calibrated uncertainty?",
+      "url": "https://webbrain.one/blog/vision-shootout-round-2",
+      "datePublished": "2026-04-29",
+      "description": "A second round of vision-model benchmarking for browser agents. NVIDIA's Nemotron Omni 30B-A3B-Reasoning and the dense Qwen 3.6-27B both enter — and one of them is 17% cheaper per image. We measure what changes for a real browser-agent workload, and what doesn't.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    },
+    {
+      "@type": "BlogPosting",
+      "headline": "Four vision models, one screenshot: which one is actually worth running locally for a browser agent?",
+      "url": "https://webbrain.one/blog/vision-model-shootout",
+      "datePublished": "2026-04-21",
+      "description": "We benchmarked Gemma 4-E2B, Gemma 4-31B, Qwen3.5-27B, and Qwen3.6-35B-A3B on the same browser screenshot using WebBrain's exact vision-sub-call prompt. Here's what the numbers look like and why one model changed our default recommendation.",
+      "author": {
+        "@type": "Person",
+        "name": "Emre Sokullu",
+        "url": "https://emresokullu.com"
+      }
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <div class="glow-bg"></div>
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-brand"><span class="emoji" aria-hidden="true">&#129504;</span> WebBrain<span class="domain">.one</span></a>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/blog">Blog</a>
+        <select class="lang-dropdown" id="lang-dropdown" aria-label="Select language" data-current="en"><option value="en">English</option><option value="es">Espanol</option><option value="fr">Francais</option><option value="tr">Turkce</option><option value="zh">Chinese</option><option value="ru">Russian</option><option value="uk">Ukrainian</option><option value="ar">Arabic</option><option value="ja">Japanese</option><option value="ko">Korean</option><option value="id">Bahasa Indonesia</option><option value="th">Thai</option><option value="ms">Bahasa Melayu</option><option value="tl">Filipino</option></select>
+        <button class="theme-toggle" type="button" id="theme-toggle" aria-label="Toggle light / dark theme" title="Toggle light / dark theme">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <a href="https://github.com/webbrain-one/webbrain" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <span class="page-label">Blog</span>
+    <h1>Engineering notes</h1>
+    <p class="page-sub">Short write-ups on design decisions, failure modes, and benchmarks from building an open-source AI browser agent.</p>
+
+    <div class="post-list">
+      <a href="/blog/ornith-35b-webbrain-planner-benchmark" class="post-card">
+        <div class="post-meta">June 26, 2026 &middot; 6 min read</div>
+        <div class="post-title">Ornith-1.0-35B in WebBrain&#39;s frozen planner benchmark</div>
+        <div class="post-excerpt">Ornith-1.0-35B is a strong local planner and narrowly beats Qwen 3.6 35B on WebBrain&#39;s all-case Sonnet alignment. It does not beat Gemma 4 31B QAT in this browser-agent harness.</div>
+      </a>
+<a href="/blog/tiny-lfm25-raw-planner-benchmark" class="post-card">
+        <div class="post-meta">June 26, 2026 &middot; 5 min read</div>
+        <div class="post-title">Tiny raw LFM 2.5 checkpoints in WebBrain&#39;s frozen planner benchmark</div>
+        <div class="post-excerpt">LFM 2.5 230M and 350M both completed the frozen WebBrain planner run without transport errors. The raw tiny checkpoints are not good browser planners yet, but their failure shape is useful fine-tuning data.</div>
+      </a>
+<a href="/blog/minimax-m3-webbrain-cloud-tool-calling" class="post-card">
+        <div class="post-meta">June 21, 2026 &middot; 6 min read</div>
+        <div class="post-title">MiniMax M3 and WebBrain Cloud 1.0 enter the frozen WebBrain planner benchmark</div>
+        <div class="post-excerpt">MiniMax M3 landed at 75% Sonnet first-tool alignment, below the older MiniMax M2.7 run. WebBrain Cloud 1.0 reached 73% alignment with a much lower run cost, but higher latency in this test path.</div>
+      </a>
+<a href="/blog/gemma-4-12b-qat-planner-benchmark" class="post-card">
+        <div class="post-meta">June 20, 2026 &middot; 6 min read</div>
+        <div class="post-title">Gemma 4 12B QAT is fast enough for WebBrain, but Qwen 3.5 9B still routes a little better</div>
+        <div class="post-excerpt">Gemma 4 12B QAT lands as a very fast local WebBrain planner: 92/100 parsed calls, 14% exact, 33% tool-name match, 0.43s median per request, and a working but imperfect vision probe.</div>
+      </a>
+<a href="/blog/gemma-4-31b-qat-planner-benchmark" class="post-card">
+        <div class="post-meta">June 20, 2026 &middot; 7 min read</div>
+        <div class="post-title">Gemma 4 31B QAT quietly becomes the best local Gemma planner we have tested</div>
+        <div class="post-excerpt">Gemma 4 31B QAT is not branded like a new generation, but in WebBrain&#39;s local planner bench it behaves like a meaningful upgrade: 95/100 parsed calls, 19% exact, 37% tool-name match, and 0.55s median latency.</div>
+      </a>
+<a href="/blog/local-planner-q4-june-2026" class="post-card">
+        <div class="post-meta">June 19, 2026 &middot; 9 min read</div>
+        <div class="post-title">DiffusionGemma hits 0.35s median in the WebBrain local planner bench</div>
+        <div class="post-excerpt">Gemma 4 12B Coder, North Mini Code, and DiffusionGemma all completed the frozen legacy tool-call bench through different serving paths. DiffusionGemma was the speed surprise under vLLM and also handled the vision probe, but its diffusion-style generation still needs more WebBrain-specific reliability work. VibeThinker confirmed its own model-card warning: it is not a browser-agent tool-calling model.</div>
+      </a>
+<a href="/blog/webbrain-cloud-local-model-benchmarks" class="post-card">
+        <div class="post-meta">June 19, 2026 &middot; 5 min read</div>
+        <div class="post-title">WebBrain Cloud is live, and these are the local models we are benchmarking next</div>
+        <div class="post-excerpt">WebBrain Cloud is live in the latest main branch, which means you can try WebBrain without a local LLM or API access. It is request-limited, but useful for a first look. We are also lining up the next local-model benchmark set by hardware band: 4-12GB, 12-24GB, and 24-64GB VRAM.</div>
+      </a>
+<a href="/blog/molmo2-8b-tool-calling" class="post-card">
+        <div class="post-meta">June 12, 2026 &middot; 8 min read</div>
+        <div class="post-title">Molmo2-8B is truly open. Our current serving path could not give it a fair browser-tool test.</div>
+        <div class="post-excerpt">Molmo2-8B deserves praise for being open source in the meaningful sense: weights, data, recipe, and no closed-VLM distillation dependency. We could not run a fair native OpenAI-tools comparison through the current LM Studio Molmo path: structured tools failed at prompt rendering, and the fallback text-call run produced only 2 parsed tool calls.</div>
+      </a>
+<a href="/blog/agent-security-model" class="post-card">
+        <div class="post-meta">June 2, 2026 &middot; 9 min read</div>
+        <div class="post-title">How WebBrain keeps a local AI agent from getting hijacked by the page it&#39;s reading</div>
+        <div class="post-excerpt">When an AI agent can act on a page as the logged-in user, the page itself becomes an attacker. We walk through WebBrain&#39;s layered defense — untrusted-content quarantine, a language-agnostic permission gate, UI-first actions — and share what our adversarial tests revealed: big models resist injection on their own, small local models need the guardrails, and the guardrails are what flip a confused model from relaying an attacker&#39;s instruction to flagging it.</div>
+      </a>
+<a href="/blog/liquid-lfm25-tool-calling" class="post-card">
+        <div class="post-meta">May 31, 2026 &middot; 7 min read</div>
+        <div class="post-title">Liquid LFM 2.5-8B-A1B on browser tool calling: where the new on-device MoE fits</div>
+        <div class="post-excerpt">Liquid AI&#39;s just-shipped LFM 2.5-8B-A1B (8.3B total / 1.5B active sparse MoE) joins our browser-agent benchmark. It beats both small Qwens and runs within reach of Gemma 4-E2B against Claude Sonnet 4.6 — but for the small-model distillation slot, plain Apache 2.0 still wins over LFM&#39;s $10M-revenue-cliff license. Also: a tool-schema drift bug we caught and the freeze fix we shipped.</div>
+      </a>
+<a href="/blog/llm-tool-calling-benchmark" class="post-card">
+        <div class="post-meta">May 23, 2026 &middot; 8 min read</div>
+        <div class="post-title">13 LLMs, 100 browser tasks, two baselines: which model actually picks the right tool?</div>
+        <div class="post-excerpt">We benchmarked 13 local and API models on 100 real browser-agent tool-calling tasks against both consensus voting and Claude Sonnet 4.6. The consensus winner (Qwen 3.6-35B-A3B at 94%) isn&#39;t the Sonnet-match winner (Qwen 3.6-27B at 77%) — and that gap tells you something useful about what &quot;correct&quot; means for tool calling.</div>
+      </a>
+<a href="/blog/gemma4-turkish-pruning" class="post-card">
+        <div class="post-meta">May 19, 2026 &middot; 4 min read</div>
+        <div class="post-title">Pruning Gemma 4 26B-A4B for small GPUs: Turkish-first, language-agnostic MoE surgery</div>
+        <div class="post-excerpt">Router hooks + expert activation telemetry + surgical long-tail removal + brief LoRA heal. Early run: 128→101 experts/layer, 26B→21B params, ~11 GB at 4-bit GGUF, with solid Turkish fluency and code performance.</div>
+      </a>
+<a href="/blog/vision-shootout-round-4" class="post-card">
+        <div class="post-meta">May 7, 2026 &middot; 6 min read</div>
+        <div class="post-title">Round 4: Qwen 3.5-9B-int4 punches above its weight — when 9B int4 beats 308B IQ3_S on affordance</div>
+        <div class="post-excerpt">A 9B int4 Qwen 3.5 on vLLM classifies the email-chip dropdown explicitly — something the 308B MiMo V2.5 at IQ3_S and the larger Qwen 3.6-35B-A3B both missed. Cheapest image tokens after Gemma. The catch: it loses the red-border visual cue and joins the &quot;Unknowns: None&quot; club. Suddenly the most interesting option for ≤8 GB VRAM. Plus an updated routing-policy table by VRAM bracket.</div>
+      </a>
+<a href="/blog/vision-shootout-round-3" class="post-card">
+        <div class="post-meta">May 7, 2026 &middot; 7 min read</div>
+        <div class="post-title">Round 3: Xiaomi MiMo V2.5 enters the vision shootout — and joins the &quot;Unknowns: None&quot; club</div>
+        <div class="post-excerpt">The empirical follow-up to last week&#39;s MiMo speculation post. Same probe, same Google sign-in screen, same prompt. MiMo at IQ3_S nails OCR and state extraction in the Qwen 3.6 tier — but joins Nemotron and Gemma in writing &quot;Unknowns: None&quot; instead of flagging the red-border ambiguity. Token cost ties the most expensive bucket; latency is in a different class. Plus a probe upgrade so big reasoning models stop tripping the default fetch headers timeout.</div>
+      </a>
+<a href="/blog/mimo-v25-pro-vs-flash" class="post-card">
+        <div class="post-meta">April 30, 2026 &middot; 6 min read</div>
+        <div class="post-title">Xiaomi MiMo V2.5 Pro vs &quot;V2.5 Flash&quot;: should WebBrain add both?</div>
+        <div class="post-excerpt">Research notes on Xiaomi&#39;s newly released MiMo V2.5 series and why multimodal Pro+Flash-style routing may outperform text-only stacks for browser-agent workloads, while Qwen 3.6 still leads value on many pure-text tasks.</div>
+      </a>
+<a href="/blog/vision-shootout-round-2" class="post-card">
+        <div class="post-meta">April 29, 2026 &middot; 8 min read</div>
+        <div class="post-title">Round 2: Nemotron Omni 30B vs Qwen 3.6 — does cheaper image tokens beat calibrated uncertainty?</div>
+        <div class="post-excerpt">A second round of vision-model benchmarking for browser agents. NVIDIA&#39;s Nemotron Omni 30B-A3B-Reasoning is 17% cheaper per image and classifies inputs better than Qwen 3.6-35B-A3B — but loses on calibrated uncertainty, and is English-only. Plus a head-to-head with the dense Qwen 3.6-27B that explains why MoE is the right architecture for self-hosted vision.</div>
+      </a>
+<a href="/blog/vision-model-shootout" class="post-card">
+        <div class="post-meta">April 21, 2026 &middot; 7 min read</div>
+        <div class="post-title">Four vision models, one screenshot: which one is actually worth running locally for a browser agent?</div>
+        <div class="post-excerpt">We fed the same Google sign-in page through Gemma 4-E2B, Gemma 4-31B, Qwen3.5-27B, and Qwen3.6-35B-A3B using the exact system prompt WebBrain&#39;s vision sub-call ships with. The spread on OCR accuracy, latency, and token cost is wider than you&#39;d expect — and one model quietly changed our mind about which architecture to reach for.</div>
+      </a>
+    </div>
+  </main>
+
+  <footer>
+    <div>&copy; 2026 WebBrain &middot; <a href="/privacy">Privacy</a></div>
+    <div><a href="https://github.com/webbrain-one/webbrain" target="_blank" rel="noopener">GitHub</a></div>
+  </footer>
+  <script>
+    (function () {
+      const btn = document.getElementById('theme-toggle');
+      if (!btn) return;
+      const root = document.documentElement;
+
+      function setTheme(theme, persist) {
+        root.setAttribute('data-theme', theme);
+        if (persist) {
+          try { localStorage.setItem('webbrain-theme', theme); } catch (_) {}
+        }
+      }
+
+      btn.addEventListener('click', function () {
+        const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        setTheme(next, true);
+      });
+
+      const mq = window.matchMedia('(prefers-color-scheme: light)');
+      function onMQ(e) {
+        try {
+          if (localStorage.getItem('webbrain-theme')) return;
+        } catch (_) {}
+        setTheme(e.matches ? 'light' : 'dark', false);
+      }
+      if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onMQ);
+      else if (typeof mq.addListener === 'function') mq.addListener(onMQ);
+    })();
+  </script>
+  <script>
+    (function () {
+      const LOCALES = ["en","es","fr","tr","zh","ru","uk","ar","ja","ko","id","th","ms","tl"];
+      const sel = document.getElementById('lang-dropdown');
+      if (!sel) return;
+      sel.value = sel.dataset.current || 'en';
+      sel.addEventListener('change', function () {
+        const target = sel.value;
+        if (!LOCALES.includes(target)) return;
+        window.location.href = target === 'en' ? '/' : '/' + target + '/';
+      });
+    })();
+  </script>
+</body>
+</html>

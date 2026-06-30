@@ -1,0 +1,13 @@
+{
+  "owner": "webbrain",
+  "name": "web-tools",
+  "type": "plugin",
+  "runner": "node",
+  "tags": [
+    "tools-provider",
+    "web",
+    "fetch",
+    "research",
+    "browser-tools"
+  ]
+}

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="WebBrain brain emoji icon">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="65%">
+      <stop offset="0%" stop-color="#1f2a5f"/>
+      <stop offset="64%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </radialGradient>
+  </defs>
+  <circle cx="256" cy="256" r="238" fill="url(#bg)"/>
+  <g transform="translate(256,240) scale(3.15) translate(-50,-55)">
+    <path d="M47 98h6v12h-6z" fill="#E87DA0"/>
+    <path d="M50 18C38 18 28 24 23 33c-3-2-6-3-10-3C5 30 0 38 0 48c0 5 2 10 5 14-2 3-3 7-3 11 0 9 5 17 13 21 1 8 8 14 16 16v-8h19V18z" fill="#F9A8C9"/>
+    <path d="M50 18c12 0 22 6 27 15 3-2 6-3 10-3 8 0 13 8 13 18 0 5-2 10-5 14 2 3 3 7 3 11 0 9-5 17-13 21-1 8-8 14-16 16v-8H50V18z" fill="#F472B6"/>
+    <line x1="50" y1="18" x2="50" y2="102" stroke="#D4467E" stroke-width="2"/>
+    <path d="M48 30C38 32 30 38 26 46" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path d="M48 48C34 48 22 54 18 62" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path d="M48 66C38 68 28 74 24 82" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path d="M48 84C42 86 36 90 33 95" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path d="M52 30C62 32 70 38 74 46" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path d="M52 48C66 48 78 54 82 62" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path d="M52 66C62 68 72 74 76 82" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path d="M52 84C58 86 64 90 67 95" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
+  </g>
+</svg>

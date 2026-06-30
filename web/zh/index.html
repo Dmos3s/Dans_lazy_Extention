@@ -1,0 +1,2557 @@
+<!DOCTYPE html>
+<html lang="zh" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebBrain — Chrome 和 Firefox 的免费开源 AI 浏览器代理</title>
+  <meta name="description" content="WebBrain 是 Claude 浏览器插件的免费开源替代品。面向 Chrome 与 Firefox 的 AI 浏览器代理 —— 阅读页面、提取数据、自动化任务。兼容 llama.cpp、OpenAI、Claude、OpenRouter。多语言界面、截图节省 token。MIT 许可。">
+  <meta name="keywords" content="AI 浏览器代理, 浏览器自动化, 开源浏览器插件, Claude 浏览器插件替代品, OpenClaw 替代品, 网页自动化, LLM 浏览器扩展, Chrome AI 扩展, Firefox AI 附加组件, llama.cpp 浏览器, GPT 浏览器代理, 浏览器 AI 助手, 网页抓取 AI, 多语言浏览器 AI, 节省 token 的 AI 扩展">
+  <meta property="og:title" content="WebBrain — 免费开源的 AI 浏览器代理">
+  <meta property="og:description" content="Claude 浏览器插件的开源替代品。面向 Chrome 与 Firefox 的 AI 扩展。阅读、理解并自动化任何网页。支持多提供商 LLM。多语言界面。永久免费。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://webbrain.one/zh/">
+  <meta property="og:site_name" content="WebBrain">
+  <meta property="og:locale" content="zh-CN">
+  <meta property="og:image" content="https://webbrain.one/og-image.png">
+  <meta property="og:image:secure_url" content="https://webbrain.one/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="WebBrain 图标">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="WebBrain — 开源 AI 浏览器代理">
+  <meta name="twitter:description" content="Claude 浏览器插件的免费开源替代品。面向 Chrome 与 Firefox 的 AI 代理。支持本地或云端 LLM。5 种语言界面。默认节省 token。">
+  <meta name="twitter:image" content="https://webbrain.one/twitter-image.png">
+  <meta name="twitter:image:alt" content="WebBrain 图标">
+  <meta name="robots" content="index, follow">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="canonical" href="https://webbrain.one/zh/">
+  <link rel="alternate" hreflang="en" href="https://webbrain.one/">
+  <link rel="alternate" hreflang="es" href="https://webbrain.one/es/">
+  <link rel="alternate" hreflang="fr" href="https://webbrain.one/fr/">
+  <link rel="alternate" hreflang="tr" href="https://webbrain.one/tr/">
+  <link rel="alternate" hreflang="zh" href="https://webbrain.one/zh/">
+  <link rel="alternate" hreflang="ru" href="https://webbrain.one/ru/">
+  <link rel="alternate" hreflang="uk" href="https://webbrain.one/uk/">
+  <link rel="alternate" hreflang="ar" href="https://webbrain.one/ar/">
+  <link rel="alternate" hreflang="ja" href="https://webbrain.one/ja/">
+  <link rel="alternate" hreflang="ko" href="https://webbrain.one/ko/">
+  <link rel="alternate" hreflang="id" href="https://webbrain.one/id/">
+  <link rel="alternate" hreflang="th" href="https://webbrain.one/th/">
+  <link rel="alternate" hreflang="ms" href="https://webbrain.one/ms/">
+  <link rel="alternate" hreflang="tl" href="https://webbrain.one/tl/">
+  <link rel="alternate" hreflang="x-default" href="https://webbrain.one/">
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "WebBrain",
+  "applicationCategory": "BrowserApplication",
+  "operatingSystem": "Chrome, Firefox",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "description": "WebBrain 是 Claude 浏览器插件的免费开源替代品。面向 Chrome 与 Firefox 的 AI 浏览器代理 —— 阅读页面、提取数据、自动化任务。兼容 llama.cpp、OpenAI、Claude、OpenRouter。多语言界面、截图节省 token。MIT 许可。",
+  "url": "https://webbrain.one/zh/",
+  "inLanguage": "zh-CN",
+  "downloadUrl": "https://chromewebstore.google.com/detail/webbrain/ljhijonmfahplgbbacgcfnaihbjljhhb",
+  "softwareVersion": "5.1.0",
+  "author": {
+    "@type": "Person",
+    "name": "Emre Sokullu",
+    "url": "https://emresokullu.com"
+  },
+  "license": "https://opensource.org/licenses/MIT",
+  "isAccessibleForFree": true,
+  "screenshot": "https://webbrain.one/og-image.png"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "inLanguage": "zh-CN",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "WebBrain 是 Claude 浏览器插件的免费替代品吗?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "是的。WebBrain 提供类似的 AI 浏览器代理能力 —— 阅读页面、提取数据、点击按钮、填写表单并自动化多步骤工作流。与需要 Claude Pro 订阅且仅支持 Anthropic 模型的专有 Claude 插件不同,WebBrain 完全免费、开源(MIT 许可),并支持多个 LLM 提供商,包括完全在你的机器上运行的本地模型。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "WebBrain Cloud 订阅多少钱？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "WebBrain Cloud 目前为每个设备配置文件每月 5 美元，暂时比 Claude Pro 便宜得多。当前用量在公平使用政策下不限量：正常个人使用没问题，但不允许滥用、自动化刷量、转售或异常高流量使用。 订阅绑定到扩展为该浏览器 + 操作系统 GUID 生成的设备标识符，而不是用户账户。如果你重置扩展存储、删除浏览器配置文件、重新安装浏览器、更换浏览器/操作系统或丢失设备而导致该标识符丢失，我们无法找回或转移，也不会因此退款。 你可以在插件设置页的账户区域通过管理账单按钮订阅或管理账单。若要手动取消，请用结账时使用的邮箱地址给我们发邮件。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "WebBrain 与 OpenClaw、Browser-Use 以及其他 AI 代理框架有何不同?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "它们属于不同类别的工具。WebBrain 是浏览器扩展 —— 你在 Chrome 或 Firefox 中安装它,并在侧边栏中与它对话,无需编码。OpenClaw 和 Browser-Use 等框架是面向开发者的 SDK,用 Python 构建自动化浏览器流水线,通常使用无头浏览器和 CDP。换句话说:WebBrain 用于日常浏览时的 AI 助手;代理框架用于构建抓取机器人和测试自动化。你可以同时使用 —— 二者互补。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "我能完全离线使用 WebBrain 吗?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "可以。WebBrain 的默认提供商是 llama.cpp,它在你的电脑上运行本地 AI 模型。无需 API 密钥,AI 无需互联网,数据不会离开你的机器。下载一个 GGUF 模型,启动 llama-server,你就拥有了一个完全私有的 AI 浏览器代理。你也可以通过 OpenAI 兼容端点使用 Ollama。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "WebBrain 支持哪些 AI 模型?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "WebBrain 支持四类提供商:llama.cpp(任意本地 GGUF 模型)、OpenAI(GPT-4o、GPT-4 等)、Claude(通过原生 API 使用 Claude Opus、Sonnet、Haiku)以及 OpenRouter(访问多家提供商的 100 多种模型)。任何 OpenAI 兼容的 API 端点都能工作,因此你也可以使用 Together AI、Groq、Mistral 等服务,或任何提供 OpenAI 兼容接口的本地服务器。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "最推荐的模型是什么?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "截至 2026 年 4 月 21 日,最推荐的是 Qwen 3.6 35B。原因:在我们的视觉基准测试中(vision-model-shootout),它在截图理解方面超过了 Gemma 4,同时对本地推理仍然可行。 在消费级 GPU 上,RTX 5090 是理想选择;RTX 4090 通常可借助 Intel/Qwen3.6-35B-A3B-int4-AutoRound 的 INT4 AutoRound 量化运行。 追求最高速度时,推荐使用 vLLM 提供服务。示例命令: python -u -m vllm.entrypoints.openai.api_server --model Intel/Qwen3.6-35B-A3B-int4-AutoRound --served-model-name qwen3.6-35b --quantization auto --dtype bfloat16 --max-model-len 65536 --max-num-batched-tokens 32768 --max-num-seqs 4 --host 0.0.0.0 --port 8000 --gpu-memory-utilization 0.92 --enable-prefix-caching --enable-chunked-prefill --limit-mm-per-prompt '{\"image\": 4, \"video\": 1}' --mm-processor-cache-type shm --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder --trust-remote-code --allowed-origins '[\"*\"]' --speculative-config '{\"method\": \"dflash\", \"model\": \"z-lab/Qwen3.6-35B-A3B-DFlash\", \"num_speculative_tokens\": 15}' --attention-backend flash_attn DFlash 推测解码是可选项。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "连接到我网络上的本地 LLM 服务器(vLLM、Ollama、llama.cpp)时出现「Failed to fetch」",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "如果你的 LLM 服务器在本地网络中的另一台机器上(例如 http://192.168.1.x:8000),除非服务器发送 CORS 头,否则 Chrome 会拦截该请求。解决方案因服务器而异: vLLM:启动时添加 --allowed-origins '[\"*\"]'(值必须是 JSON 列表)。 Ollama:启动前设置环境变量 OLLAMA_ORIGINS=*。 llama.cpp:默认启用 CORS,无需更改。 如果你的服务器运行在 localhost(与浏览器同一台机器),通常不需要 CORS。该问题仅影响本地网络上跨机器的连接。请确保 WebBrain 设置中的基础 URL 以 /v1 结尾(例如 http://192.168.1.47:8000/v1)。 例外：从浏览器扩展使用 Ollama 时仍可能需要 OLLAMA_ORIGINS；请参见下方的 Ollama FAQ。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "为什么 localhost 上的 Ollama 会对 WebBrain 扩展返回 403？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "较新的 Ollama 版本即使运行在同一台机器上，也可能拒绝来自浏览器扩展来源的请求。扩展会发送类似 chrome-extension://... 或 moz-extension://... 的 Origin，如果未允许这些来源，Ollama 可能返回 403。 先退出任何已经占用 11434 端口的 Ollama 桌面应用，然后用以下命令之一启动 Ollama： OLLAMA_ORIGINS=\"*\" ollama serve OLLAMA_ORIGINS=\"chrome-extension://*,moz-extension://*\" ollama serve 将 WebBrain 的 Ollama Base URL 保持为 http://localhost:11434/v1。终端中的 curl 检查即使没有这个设置也可能正常工作，因为它们不会发送浏览器扩展来源。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "WebBrain 在 Firefox 上能用吗?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "能。WebBrain 同时提供 Chrome 版(使用 sidePanel API 的 Manifest V3)和 Firefox 版(使用 sidebar_action 的 Manifest V2)。两个版本功能一致。Firefox 版本可以作为临时附加组件用于开发,也可以发布到 addons.mozilla.org 进行永久安装。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "我可以像 Chrome 那样把 Firefox 的侧边栏从左边移到右边吗?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "可以 —— Firefox 的侧边栏默认显示在左侧,但你可以把它切换到右侧。在侧边栏标题栏上右键点击,选择「将侧边栏移到右侧」(也可以从菜单栏走「查看 → 侧边栏 → 将侧边栏移到右侧」)。重启后位置保持不变。Chrome 的 sidePanel 默认在右侧,且无法由用户从面板本身移动。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "使用 WebBrain 安全吗?它能修改网页吗?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "WebBrain 有两种模式:询问模式(默认)只读,无法修改页面上的任何内容。执行模式启用完整的浏览器代理能力(点击、输入、导航),但在启用前需要用户显式确认,并会显示明显的警告横幅。你可以随时通过「停止」按钮停止代理。扩展的源代码在 GitHub 上完全开放供审计。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "「WebBrain started debugging this browser」横幅是什么?WebBrain 为什么使用 CDP?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "为了可靠地在页面上执行操作,WebBrain 通过标准的 chrome.debugger 扩展 API 使用 Chrome DevTools Protocol(CDP)——这也是触发 Chrome「WebBrain started debugging this browser」横幅的原因。CDP 让代理能够以现代网站真正接受的可信输入事件进行点击和输入;从 content script 派发的合成事件会被许多网站、Web Components 以及由框架控制的输入字段拒绝。WebBrain 也借此为视觉回退捕获像素级精确的截图,并访问 content script 看不到的跨域 iframe 和 shadow DOM。 只读的询问模式不需要 CDP——页面和无障碍树的读取都通过普通的 content script 完成。需要它的是执行模式的可靠性和跨域操作;而在 Manifest V3 扩展中,没有任何无需调试器的 API 能提供可信输入。WebBrain 仅在某个操作需要时才按标签页附加调试器,而且整个扩展都是开源的,你可以审计会话究竟做了什么。CDP 很强大,因此我们把它的影响范围当作需要约束的东西(按需附加、读取不经过它),进一步收紧它已列入我们的安全路线图。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "它问我的问题太多了。可以关闭吗？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "这些批准提示是为了保护你的安全。即使在你信任的网站上，恶意行为者也可能伪造 LLM 指令或注入内容，试图让代理代表你执行你不会同意的操作。因此，WebBrain 在执行有后果的操作之前始终需要你的批准。如果你仍然不想经过这些提示，也可以关闭它们：打开侧边插件，点击标题栏中的齿轮图标，进入 settings.html 的 Permissions 标签页，然后关闭 Ask before consequential actions 选项。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "如何用 WebBrain 进行网页抓取和数据提取?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "打开任意网页,打开 WebBrain 侧边栏,用自然语言提问:「提取本页面所有产品名称和价格」、「获取本页面所有邮箱地址」或「用要点总结这篇文章」。AI 代理会读取页面内容、理解结构并返回提取的数据。对于更复杂的抓取,切换到执行模式,代理可以在页面间导航、点击分页按钮,并在多个页面上聚合数据。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "WebBrain 是直接调用 API,还是始终通过界面点击?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "默认情况下,WebBrain 对任何会创建、修改、删除、发送、提交、发布或购买的操作,始终通过可见界面进行。它会导航到页面、填写表单、点击按钮 —— 完全像你一样操作。它拒绝在后台通过 fetch() 直接调用 REST/GraphQL 端点进行变更。这是刻意设计:API 操作是不可见的(你看不到发送了什么),通常需要你可能未配置的单独认证令牌,而且相比于一次可见的误点击,影响范围大得多。UI-first 意味着一切都在屏幕上、在你平时的浏览器会话中、并且可中断。 对于读取数据 —— 获取 README、查找议题、跨站比价、检查状态页 —— WebBrain 会自由地通过 fetch_url 和 research_url 工具发送后台 HTTP 请求。读取不等于操作;它不会改变远程服务上的任何东西,因此不存在同样的安全顾虑。 如果你希望在某个具体任务上允许 API 变更,请在消息开头输入 /allow-api(可以后跟一段简短的任务描述)。这个按会话生效的覆盖会让 WebBrain 在界面确实失败或不可用时回退到 API 端点,但只要界面可用仍优先使用界面。覆盖启用期间,输入区上方会显示一枚置顶徽章,重置会话后该标志会清除。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "我能在 LM Studio 里也用吗?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "可以。WebBrain 的只读网络工具 —— fetch_url 和 research_url —— 也作为独立的 LM Studio 插件发布在 webbrain/web-tools。用 lms clone webbrain/web-tools 安装,然后在任意 LM Studio 聊天里开启 —— 任何支持工具调用的模型都能调用这两个工具,你不需要安装浏览器扩展。纯 Node,无 headless 浏览器。源码:lmstudio-plugin/。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "WebBrain 在某个页面上工作时,我能切换到别的标签吗?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "在 Chrome 上可以 —— 代理运行在后台 service worker 中,并绑定在启动它的标签上,因此即使你把焦点切到别处,它也会继续在那个特定标签上点击、输入和读取。针对标签的工具(CDP 的点击、输入、导航、截图)在 Chrome 中对后台标签同样有效。任务进行期间,侧边栏会锁定输入,防止你在新标签上意外启动第二个任务 —— 你需要等当前任务完成或手动停止它。需要注意的是,浏览器会限制后台标签上的计时器和动画,因此动画繁多的站点响应可能略慢。 在 Firefox 上,代理也会继续在其原始标签上运行,但自动截图会受限:Firefox 的截图 API 只能捕获当前活动标签,无法抓取后台的某个具体标签。WebBrain 会识别这一点,并在该轮跳过截图,而不是把一张无关页面的图像喂给模型。代理会继续基于文本上下文进行规划,直到你切回它的标签。 请避免在代理正在工作的同一标签上主动点击或输入 —— 这会造成你和代理争抢同一页面的竞态条件。切换标签没问题;共同驾驶同一标签则不行。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "个人资料自动填写如何工作?它安全吗?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "个人资料自动填写是 设置 → 个人资料 中的可选功能。你输入一段简短的自述 —— 姓名、工作邮箱、公司以及用于低风险注册的一次性密码 —— 然后将其打开。启用后,WebBrain 会将这段文本附加到代理的系统提示中,这样它就能无需每次询问即可填写注册表单。 该文本以明文保存在浏览器的本地存储中。它不会被传送到 WebBrain 项目,但会在每一轮作为系统提示的一部分发送给你配置的 LLM 提供商。默认关闭。 不要在此放置重要账户的密码(Google、Apple、iCloud、银行、公司 SSO、主邮箱)。这些账户应启用 2FA,而且本就不该交给代理。预期用途是你在订阅通讯和免费试用注册时反复使用的一次性密码。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "WebBrain 如何处理 Cookie 横幅和付费墙?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Cookie 横幅:WebBrain 能识别常见框架(OneTrust、Cookiebot、Didomi、Quantcast、Google Funding Choices、TrustArc)的同意横幅,并在对页面进行推理之前将其关闭。当「全部拒绝」/「拒绝非必要」/「仅必要」清晰可见时优先选择这些选项;否则会退而点击「全部接受」,而不是陷入「管理偏好」的迷宫。 付费墙:WebBrain 会如实报告付费墙,并告诉你它实际看到了什么(标题、副标题、开头几段)。它不会尝试绕过付费墙 —— 不使用 archive.today、12ft.io、不清除 Cookie、不禁用 JS、不使用阅读模式小技巧。如果你想要完整文章,请使用订阅登录,或请 WebBrain 搜索同一报道的免费报道。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "WebBrain 支持 dry-run（演练）模式吗？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "截至 7.0.0 版本, 还不支持。dry-run 模式已在路线图中, 后续会提供。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "WebBrain 如何控制云端 LLM 的账单?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "三个独立的层: 节省 token 的截图。在任何图像离开你的机器之前,WebBrain 会先缩放它(短边封顶,保持宽高比),然后迭代 JPEG 压缩直到适配每轮的图像 token 预算。一张 2000×1200 的截图,在 GPT-4o 上原本大约要花 1500 个输入 token,可被压缩到约 300–500 个 token,对页面阅读任务来说没有实际损失。实现位于 _fitImageDimensions,并有覆盖预算计算的单元测试。 智能上下文裁剪。对话历史、工具输出和内联 DOM 转储都会按每轮加以限制,当活跃模型的上下文窗口接近占满时,会从最早的内容开始裁剪。你不会看到一次运行因为一次 read_page 返回了一篇长篇大论,就从 1 万 token 悄悄膨胀到 10 万。 专用视觉模型。将便宜的文本模型(如 GPT-4o-mini)用于规划和工具调用,再配一个专门的视觉模型(如 GPT-4o)只用于截图,这样你不必在每一轮都支付多模态模型的价格。可在 设置 → 视觉 中配置。 结果:与云端提供商的长会话保持可预测。如需完全控制,请使用本地 llama.cpp —— 每 token 成本为零。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "我可以为 WebBrain 做贡献吗?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "当然可以!WebBrain 采用 MIT 许可,欢迎贡献。请查看 GitHub 仓库 了解议题、功能请求和贡献指南。"
+      }
+    }
+  ]
+}
+  </script>
+  <style>
+    /* ================================================================
+       RESET & BASE
+       ================================================================ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ----- Theme tokens -----
+       Dark is the original palette. Light is a warm cream / coffee scheme.
+       Pick by setting `data-theme="light"` or `data-theme="dark"` on <html>.
+       The early-paint script in <head> handles initial selection from
+       localStorage > prefers-color-scheme. The whole site (including the
+       hero browser mockup) reads from these vars; hardcoded rgba(255,255,255,*)
+       values were swapped for --tint-* tokens that invert per theme. */
+    :root {
+      --bg: #0b0e17;
+      --bg-card: #111827;
+      --bg-card-hover: #1a2233;
+      --surface: #161d2e;
+      --border: rgba(255,255,255,0.07);
+      --text: #e4e4ec;
+      --text-dim: #8b8fa4;
+      --accent: #6c63ff;
+      --accent-glow: rgba(108,99,255,0.25);
+      --accent2: #a78bfa;
+      --success: #34d399;
+      --warning: #fbbf24;
+      /* Subtle tints that ride on top of the bg/card — used for
+         placeholder bars, language dropdown chrome, etc. */
+      --tint-soft: rgba(255,255,255,0.05);
+      --tint-soft-2: rgba(255,255,255,0.04);
+      --tint-medium: rgba(255,255,255,0.08);
+      --tint-strong: rgba(255,255,255,0.10);
+      --tint-stronger: rgba(255,255,255,0.22);
+      --shadow-card: rgba(0,0,0,0.30);
+      --shadow-strong: rgba(0,0,0,0.40);
+      --nav-bg: rgba(11,14,23,0.80);
+      --url-bg: rgba(0,0,0,0.30);
+      /* Browser mockup interior: in dark mode the side panel keeps its
+         original near-black blues so it reads as the WebBrain plugin UI.
+         In light mode (override below) these become warm cream tones. */
+      --sp-bg: #1a1a2e;
+      --sp-msg-assistant-bg: #16213e;
+      --sp-msg-assistant-border: rgba(255,255,255,0.06);
+      --sp-input-bg: #1e2746;
+      /* Hero gradient text accent — keeps the same pink pop in both themes. */
+      --hero-gradient-3: #e879f9;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --max-w: 1100px;
+      color-scheme: dark;
+    }
+
+    :root[data-theme="light"] {
+      --bg: #f7f1e6;
+      --bg-card: #fffdf8;
+      --bg-card-hover: #f2e9d4;
+      --surface: #ede2cb;
+      --border: rgba(89,55,25,0.15);
+      --text: #2c1810;
+      --text-dim: #6b5b47;
+      --accent: #5b52e8;
+      --accent-glow: rgba(91,82,232,0.20);
+      --accent2: #7c6ce6;
+      --success: #2d8866;
+      --warning: #b97a00;
+      --tint-soft: rgba(89,55,25,0.05);
+      --tint-soft-2: rgba(89,55,25,0.07);
+      --tint-medium: rgba(89,55,25,0.10);
+      --tint-strong: rgba(89,55,25,0.14);
+      --tint-stronger: rgba(89,55,25,0.22);
+      --shadow-card: rgba(89,55,25,0.10);
+      --shadow-strong: rgba(89,55,25,0.18);
+      --nav-bg: rgba(247,241,230,0.85);
+      --url-bg: rgba(89,55,25,0.07);
+      /* Light-mode mockup interior — cream variant of the WebBrain panel. */
+      --sp-bg: #f5e9d0;
+      --sp-msg-assistant-bg: #fff7e1;
+      --sp-msg-assistant-border: rgba(89,55,25,0.10);
+      --sp-input-bg: #fdf3dc;
+      --hero-gradient-3: #b94db3;
+      color-scheme: light;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ================================================================
+       GLOW BACKGROUND
+       ================================================================ */
+    .glow-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+    }
+    .glow-bg::before {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      top: -120px; left: 50%;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+      filter: blur(80px);
+    }
+    .glow-bg::after {
+      content: '';
+      position: absolute;
+      width: 400px; height: 400px;
+      bottom: 10%; inset-inline-end: -100px;
+      background: radial-gradient(circle, rgba(167,139,250,0.12) 0%, transparent 70%);
+      filter: blur(60px);
+    }
+
+    /* ================================================================
+       NAV
+       ================================================================ */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(20px);
+      background: var(--nav-bg);
+      border-bottom: 1px solid var(--border);
+      overflow-x: clip;
+    }
+    .nav-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .nav-brand span.emoji { -webkit-text-fill-color: initial; font-size: 22px; }
+    .nav-links { display: flex; gap: 28px; align-items: center; margin-inline-start: auto; min-width: 0; }
+    .nav-links a {
+      color: var(--text-dim);
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .lang-dropdown {
+      background: var(--tint-soft);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+    .lang-dropdown:focus { outline: 2px solid var(--accent-glow); outline-offset: 1px; }
+    /* Windows/Linux render <option> with OS defaults — without this rule the
+       dropdown panel comes up white-on-white and the items are invisible.
+       macOS/Safari ignore option styling, so this is a no-op there. */
+    .lang-dropdown option {
+      background-color: var(--bg-card-hover);
+      color: var(--text);
+    }
+    .lang-dropdown option:checked,
+    .lang-dropdown option:hover {
+      background-color: var(--accent);
+      color: #fff;
+    }
+    .nav-cta {
+      background: var(--accent) !important;
+      color: #fff !important;
+      -webkit-text-fill-color: initial !important;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .nav-cta:hover { background: #5a52d5 !important; transform: translateY(-1px); text-decoration: none !important; }
+
+    /* GitHub stars pill — populated via JS on load, cached in localStorage. */
+    .gh-stars {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px 5px 8px;
+      background: var(--tint-soft-2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--text);
+      -webkit-text-fill-color: initial;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1;
+      transition: background 0.2s, border-color 0.2s, transform 0.1s;
+    }
+    .gh-stars:hover {
+      background: var(--tint-medium);
+      border-color: var(--accent);
+      text-decoration: none;
+      transform: translateY(-1px);
+    }
+    .gh-stars svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .gh-stars .gh-icon { color: var(--text-dim); }
+    .gh-stars .gh-star { color: var(--warning); }
+    .gh-stars .gh-count {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      min-width: 1ch;
+    }
+    .gh-stars[data-loading="1"] .gh-count { color: var(--text-dim); }
+
+    /* Theme toggle — sun in light mode, moon in dark mode. JS just flips
+       the data-theme attribute on <html>; the CSS swap is purely visual. */
+    .theme-toggle {
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--tint-soft-2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-dim);
+      transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
+    }
+    .theme-toggle:hover {
+      background: var(--tint-medium);
+      border-color: var(--accent);
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+    .theme-toggle:focus-visible {
+      outline: 2px solid var(--accent2);
+      outline-offset: 2px;
+    }
+    .theme-toggle svg { width: 16px; height: 16px; display: block; }
+    /* Show the icon for the theme the button will switch TO: in dark mode
+       show the sun (click → light); in light mode show the moon. */
+    .theme-toggle .icon-sun { display: block; }
+    .theme-toggle .icon-moon { display: none; }
+    :root[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+    :root[data-theme="light"] .theme-toggle .icon-moon { display: block; }
+
+    /* ================================================================
+       HERO
+       ================================================================ */
+    .hero {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 100px 24px 80px;
+      text-align: center;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .hero h1 {
+      font-size: clamp(40px, 6vw, 68px);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      letter-spacing: -1.5px;
+    }
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--accent), var(--accent2), var(--hero-gradient-3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      font-size: 18px;
+      color: var(--text-dim);
+      max-width: 600px;
+      margin: 0 auto 36px;
+      line-height: 1.7;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 24px var(--accent-glow);
+    }
+    .btn-primary:hover { background: #5a52d5; transform: translateY(-2px); text-decoration: none; color: #fff; }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--bg-card-hover); transform: translateY(-2px); text-decoration: none; }
+    .btn svg { width: 18px; height: 18px; }
+
+    /* Hero screenshot mockup */
+    .hero-visual {
+      margin-top: 60px;
+      position: relative;
+      overflow: hidden;
+    }
+    .browser-mockup {
+      max-width: 820px;
+      margin: 0 auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 24px 80px var(--shadow-strong);
+    }
+    .browser-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .browser-dots { display: flex; gap: 6px; }
+    .browser-dots span {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+    .browser-dots span:nth-child(1) { background: #ef4444; }
+    .browser-dots span:nth-child(2) { background: #fbbf24; }
+    .browser-dots span:nth-child(3) { background: #34d399; }
+    .browser-url {
+      flex: 1;
+      min-width: 0;
+      margin-inline-start: 12px;
+      background: var(--url-bg);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 12px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .browser-body {
+      display: flex;
+      min-height: 380px;
+      flex: 1;
+    }
+    .browser-page {
+      flex: 1;
+      padding: 24px;
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.8;
+    }
+    .browser-page h3 { color: var(--text); margin-bottom: 8px; font-size: 16px; }
+    .browser-page .placeholder-line {
+      height: 10px;
+      background: var(--tint-soft-2);
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .browser-page .placeholder-line:nth-child(odd) { width: 90%; }
+    .browser-page .placeholder-line:nth-child(even) { width: 70%; }
+
+    /* Side panel mockup */
+    .side-panel {
+      width: 300px;
+      border-inline-start: 1px solid var(--border);
+      background: var(--sp-bg);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .sp-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sp-header .sp-brand {
+      font-size: 14px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .sp-header .sp-brand .sp-domain {
+      font-weight: 500;
+      opacity: 1;
+      background: none;
+      -webkit-text-fill-color: rgba(228,228,236,0.75);
+    }
+    .sp-status {
+      width: 7px; height: 7px;
+      background: var(--success);
+      border-radius: 50%;
+    }
+    .sp-messages {
+      flex: 1;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+    }
+    .sp-msg {
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      max-width: 90%;
+      overflow-wrap: anywhere;
+      opacity: 0;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .sp-msg.user {
+      background: var(--accent);
+      color: #fff;
+      align-self: flex-end;
+    }
+    .sp-msg.assistant {
+      background: var(--sp-msg-assistant-bg);
+      border: 1px solid var(--sp-msg-assistant-border);
+      align-self: flex-start;
+    }
+    /* Messages animate only inside the active scene. Toggling .is-active on the
+       scene removes/reapplies the animation rule, restarting it each cycle. */
+    .browser-mockup.is-active .sp-msg          { animation: fadeUp 0.45s ease both; }
+    .browser-mockup.is-active .sp-msg.user     { animation-delay: 0.15s; }
+    .browser-mockup.is-active .sp-msg.assistant{ animation-delay: 0.45s; }
+    /* Variant 4 — second turn lands after the first answer has settled. */
+    .browser-mockup.is-active .sp-msg.user-2       { animation-delay: 0.95s; }
+    .browser-mockup.is-active .sp-msg.assistant-2  { animation-delay: 1.30s; }
+    .sp-msg .step {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .sp-msg .step .check { color: var(--success); }
+    .sp-input {
+      padding: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .sp-input-box {
+      display: flex;
+      align-items: center;
+      background: var(--sp-input-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    /* ================================================================
+       MOCKUP STACK — 4 demo scenes share the same grid cell and
+       cross-fade between them. The container takes the height of the
+       tallest scene so the surrounding layout doesn't jump.
+       ================================================================ */
+    .mockup-stack {
+      display: grid;
+      /* Single column that fills the container — without this, grid auto-
+         sizes the track to max-content of the items, which collapses the
+         mockup to ~470px instead of the 820px it had before. */
+      grid-template-columns: minmax(0, 1fr);
+      max-width: 820px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+    .mockup-stack > .browser-mockup {
+      grid-column: 1;
+      grid-row: 1;
+      display: flex;
+      flex-direction: column;
+      /* Reset the base .browser-mockup's `margin: 0 auto` — on a grid item,
+         auto margins absorb the leftover track space instead of letting
+         the item stretch, which left the mockup ~470px wide. */
+      margin: 0;
+      width: 100%;
+      opacity: 0;
+      transform: scale(0.985);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+      pointer-events: none;
+    }
+    .mockup-stack > .browser-mockup.is-active {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+
+    .scene-nav {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 22px;
+    }
+    .scene-dot {
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--tint-strong);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      width: 9px;
+      height: 9px;
+      padding: 0;
+      cursor: pointer;
+      transition: background 0.2s, width 0.3s, box-shadow 0.2s;
+    }
+    .scene-dot:hover { background: var(--tint-stronger); }
+    .scene-dot.is-active {
+      background: var(--accent);
+      width: 26px;
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.18);
+    }
+    .scene-dot:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+
+    /* ----- v2 — "clone this site" landing-page mockup ----- */
+    .page-landing {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .pl-logo {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pl-logo .pl-mark {
+      color: var(--accent2);
+      font-size: 16px;
+    }
+    .pl-hero {
+      background: linear-gradient(135deg, rgba(108,99,255,0.18), rgba(167,139,250,0.10));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .pl-headline {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .pl-headline em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .pl-buttons { display: flex; gap: 8px; }
+    .pl-btn {
+      height: 22px;
+      width: 70px;
+      border-radius: 6px;
+      background: var(--tint-medium);
+    }
+    .pl-btn.primary { background: var(--accent); width: 86px; }
+    .pl-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .pl-tile {
+      height: 54px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .pl-tile:nth-child(1) { background: linear-gradient(135deg, rgba(108,99,255,0.22), rgba(108,99,255,0.04)); }
+    .pl-tile:nth-child(2) { background: linear-gradient(135deg, rgba(167,139,250,0.22), rgba(167,139,250,0.04)); }
+    .pl-tile:nth-child(3) { background: linear-gradient(135deg, rgba(52,211,153,0.22), rgba(52,211,153,0.04)); }
+    .palette-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 0 1px var(--tint-strong);
+    }
+
+    /* ----- v3 — short-form video player ----- */
+    .page-video {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 24px;
+      background: radial-gradient(circle at 50% 30%, rgba(167,139,250,0.10), transparent 70%);
+    }
+    .pv-frame {
+      position: relative;
+      width: 200px;
+      aspect-ratio: 9 / 16;
+      max-height: 100%;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 12px 36px rgba(0,0,0,0.45);
+      background:
+        linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 75%, rgba(0,0,0,0.85) 100%),
+        linear-gradient(45deg, #2d1b69, #6c63ff 70%, #ec4899);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 10px 12px 14px;
+      color: #fff;
+    }
+    .pv-frame::before {
+      content: '▶';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: rgba(255,255,255,0.85);
+      text-shadow: 0 4px 14px rgba(0,0,0,0.5);
+      pointer-events: none;
+    }
+    .pv-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: rgba(255,255,255,0.85);
+      position: relative;
+      z-index: 1;
+    }
+    .pv-time {
+      background: rgba(0,0,0,0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .pv-bottom {
+      position: relative;
+      z-index: 1;
+      font-size: 11px;
+      line-height: 1.4;
+      padding-inline-end: 30px;
+    }
+    .pv-username {
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .pv-caption {
+      color: rgba(255,255,255,0.85);
+    }
+    .pv-actions {
+      position: absolute;
+      inset-inline-end: 6px;
+      bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 1;
+    }
+    .pv-actions span {
+      background: rgba(0,0,0,0.4);
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+
+    /* ----- v4 — long-form article ----- */
+    .page-article h3 { margin-bottom: 4px; }
+    .pa-meta {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+      letter-spacing: 0.2px;
+    }
+
+    /* Reduced motion — keep messages visible and disable cross-fade. */
+    @media (prefers-reduced-motion: reduce) {
+      .sp-msg { opacity: 1; }
+      .browser-mockup.is-active .sp-msg { animation: none; }
+      .mockup-stack > .browser-mockup { transition: none; transform: none; }
+    }
+
+    /* ================================================================
+       FEATURES
+       ================================================================ */
+    .section {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 80px 24px;
+    }
+    .section-label {
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      text-align: center;
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: -0.5px;
+    }
+    .section-subtitle {
+      text-align: center;
+      color: var(--text-dim);
+      max-width: 560px;
+      margin: 0 auto 48px;
+      font-size: 16px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: all 0.25s;
+    }
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(108,99,255,0.2);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px var(--shadow-card);
+    }
+    .feature-icon {
+      width: 44px; height: 44px;
+      background: var(--accent-glow);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+    .feature-card h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .feature-card p {
+      color: var(--text-dim);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ================================================================
+       PROVIDERS — constellation layout
+
+       A central WebBrain core orbited by provider nodes connected via
+       SVG lines. The container is sized as a fixed aspect-ratio canvas
+       (a square on small screens, wide rectangle on desktop). Each node
+       is positioned with --x/--y CSS variables in % so the SVG line ends
+       and node centers stay aligned across viewports.
+       ================================================================ */
+    .provider-constellation {
+      position: relative;
+      max-width: 880px;
+      margin: 56px auto 0;
+      aspect-ratio: 16 / 9;
+      isolation: isolate;
+    }
+    .constellation-lines {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 0;
+    }
+    .constellation-lines line {
+      stroke: var(--border);
+      stroke-width: 1;
+      stroke-dasharray: 3 5;
+      opacity: 0.9;
+      transition: stroke 0.25s, opacity 0.25s;
+    }
+    .constellation-lines line.is-active {
+      stroke: var(--accent);
+      stroke-dasharray: none;
+      opacity: 1;
+    }
+
+    .constellation-center {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 96px; height: 96px;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cc-core {
+      width: 76px; height: 76px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, var(--accent2), var(--accent) 60%, #4f46c4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      box-shadow: 0 0 0 6px rgba(108,99,255,0.12), 0 12px 40px rgba(108,99,255,0.35);
+      position: relative;
+      z-index: 1;
+    }
+    .cc-ring {
+      position: absolute;
+      inset: -10px;
+      border: 1px solid rgba(167,139,250,0.35);
+      border-radius: 50%;
+      animation: cc-pulse 4s ease-in-out infinite;
+    }
+    .cc-ring-2 {
+      inset: -28px;
+      border-color: rgba(108,99,255,0.18);
+      animation-delay: 1s;
+    }
+    @keyframes cc-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50%      { transform: scale(1.08); opacity: 0.35; }
+    }
+
+    .provider-node {
+      position: absolute;
+      left: var(--x); top: var(--y);
+      transform: translate(-50%, -50%);
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      animation: pn-float 6s ease-in-out infinite;
+      animation-delay: var(--d, 0s);
+      text-decoration: none;
+      color: inherit;
+    }
+    @keyframes pn-float {
+      0%, 100% { transform: translate(-50%, calc(-50% - 4px)); }
+      50%      { transform: translate(-50%, calc(-50% + 4px)); }
+    }
+    .pn-bubble {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s, background 0.25s;
+    }
+    .provider-node:hover .pn-bubble,
+    .provider-node:focus-visible .pn-bubble {
+      transform: scale(1.12);
+      border-color: var(--accent);
+      background: var(--bg-card-hover);
+      box-shadow: 0 8px 28px rgba(108,99,255,0.35);
+    }
+    .pn-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dim);
+      letter-spacing: 0.2px;
+      transition: color 0.25s;
+      white-space: nowrap;
+    }
+    .provider-node:hover .pn-label,
+    .provider-node:focus-visible .pn-label { color: var(--text); }
+    .pn-bubble.local { background: rgba(52,211,153,0.12); color: var(--success); border-color: rgba(52,211,153,0.25); }
+    .pn-bubble.ollama { background: rgba(38,121,255,0.12); color: #2679ff; border-color: rgba(38,121,255,0.25); }
+    .pn-bubble.openai { background: rgba(16,163,127,0.12); color: #10a37f; border-color: rgba(16,163,127,0.25); }
+    .pn-bubble.anthropic { background: rgba(204,149,96,0.12); color: #cc9560; border-color: rgba(204,149,96,0.25); }
+    .pn-bubble.openrouter { background: rgba(108,99,255,0.12); color: var(--accent2); border-color: rgba(108,99,255,0.3); }
+    .pn-bubble.studiolm { background: rgba(245,158,11,0.12); color: #f59e0b; border-color: rgba(245,158,11,0.25); }
+    .pn-bubble.vllm { background: rgba(99,102,241,0.12); color: #6366f1; border-color: rgba(99,102,241,0.25); }
+    /* Grok is a white-on-black brand. In dark mode the bubble is near-white
+       on dark; light mode inverts to dark glyph on cream. */
+    .pn-bubble.grok { background: rgba(255,255,255,0.06); color: #e5e5e5; border-color: rgba(255,255,255,0.2); }
+    :root[data-theme="light"] .pn-bubble.grok { background: rgba(0,0,0,0.06); color: #1a1a1a; border-color: rgba(0,0,0,0.2); }
+    .pn-bubble.gemini { background: rgba(66,133,244,0.12); color: #4285f4; border-color: rgba(66,133,244,0.25); }
+    .pn-bubble.deepseek { background: rgba(72,191,255,0.12); color: #48bfff; border-color: rgba(72,191,255,0.25); }
+    .pn-bubble.mistral { background: rgba(255,127,80,0.12); color: #ff7f50; border-color: rgba(255,127,80,0.25); }
+
+    /* Reduced-motion: kill the float + ring pulse so users on
+       prefers-reduced-motion see a static layout. */
+    @media (prefers-reduced-motion: reduce) {
+      .provider-node { animation: none; transform: translate(-50%, -50%); }
+      .cc-ring, .cc-ring-2 { animation: none; }
+    }
+
+    /* ================================================================
+       MODES
+       ================================================================ */
+    .modes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    .mode-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      text-align: center;
+      transition: all 0.25s;
+    }
+    .mode-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px var(--shadow-card);
+    }
+    .mode-card.ask { border-top: 3px solid var(--accent); }
+    .mode-card.act { border-top: 3px solid var(--warning); }
+    .mode-card .mode-icon { font-size: 36px; margin-bottom: 16px; }
+    .mode-card h3 { font-size: 20px; margin-bottom: 8px; }
+    .mode-card p { color: var(--text-dim); font-size: 14px; }
+
+    /* ================================================================
+       DOWNLOAD / INSTALL
+       ================================================================ */
+    .download-section {
+      text-align: center;
+    }
+    .download-cards {
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      gap: 20px;
+      flex-wrap: nowrap;
+      margin-top: 40px;
+      max-width: 820px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .download-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      text-align: center;
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all 0.25s;
+    }
+    .download-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px var(--shadow-card);
+    }
+    .download-card .browser-icon { font-size: 38px; margin-bottom: 14px; }
+    .download-card h3 { font-size: 18px; margin-bottom: 6px; }
+    .download-card p { color: var(--text-dim); font-size: 13px; margin-bottom: 20px; }
+    .download-card-actions {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: auto;
+    }
+    .download-card .btn {
+      width: 100%;
+      justify-content: center;
+      line-height: 1.35;
+    }
+    .download-card .btn svg { flex: 0 0 auto; }
+    .download-card-firefox .btn-primary {
+      overflow-wrap: normal;
+      word-break: normal;
+      hyphens: none;
+    }
+    /* Chrome still gets a little extra emphasis, but keep the Firefox card
+       wide enough that its install CTA does not wrap awkwardly. Both cards stay
+       on a single row at all desktop/tablet widths; the mobile breakpoint
+       below stacks them. */
+    .download-card-chrome {
+      flex-grow: 1.12;
+      padding: 38px 32px;
+      border-color: rgba(0, 212, 255, 0.45);
+    }
+    .download-card-chrome .browser-icon { font-size: 46px; }
+    .download-card-chrome h3 { font-size: 20px; }
+
+    /* ================================================================
+       OPEN SOURCE
+       ================================================================ */
+    .oss-banner {
+      max-width: 760px;
+      margin: 0 auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px;
+      text-align: center;
+    }
+    .oss-banner h3 { font-size: 24px; margin-bottom: 12px; }
+    .oss-banner p { color: var(--text-dim); font-size: 15px; margin-bottom: 24px; max-width: 500px; margin-left: auto; margin-right: auto; }
+    .share-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .share-row .btn { gap: 8px; }
+    /* Footer share icons sit just before the text links; visually a small
+       row of two glyphs that stays out of the way. */
+    .footer-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      color: var(--text-dim);
+      transition: color 0.15s, background 0.15s;
+    }
+    .footer-icon:hover { color: var(--text); background: var(--tint-soft); text-decoration: none; }
+    .footer-icon svg { display: block; }
+
+    /* ================================================================
+       FOOTER
+       ================================================================ */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+    footer a { color: var(--text-dim); }
+    footer a:hover { color: var(--text); }
+    .footer-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 12px 20px; }
+
+    .safety-note {
+      max-width: var(--max-w);
+      margin: 0 auto 24px;
+      background: rgba(251,191,36,0.1);
+      border: 1px solid rgba(251,191,36,0.35);
+      border-radius: var(--radius-sm);
+      padding: 18px 20px;
+      color: var(--text);
+      text-align: start;
+      line-height: 1.55;
+      font-size: 13px;
+    }
+    .safety-note h4 {
+      font-size: 14px;
+      margin-bottom: 8px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: var(--warning);
+    }
+    .safety-note ul {
+      margin: 0;
+      padding-inline-start: 18px;
+    }
+    .safety-note li { margin-bottom: 6px; }
+    .safety-note li:last-child { margin-bottom: 0; }
+
+    /* ================================================================
+       COMPARISON TABLE
+       ================================================================ */
+    .compare-table-wrap {
+      overflow-x: auto;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      font-size: 14px;
+    }
+    .compare-table th,
+    .compare-table td {
+      padding: 12px 16px;
+      text-align: start;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-table thead th {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: var(--surface);
+    }
+    .compare-table thead th.highlight {
+      color: var(--accent);
+    }
+    .compare-table td.highlight {
+      color: var(--accent2);
+      font-weight: 600;
+    }
+    .compare-table tbody tr {
+      transition: background 0.15s;
+    }
+    .compare-table tbody tr:hover {
+      background: rgba(108,99,255,0.04);
+    }
+
+    /* ================================================================
+       FAQ
+       ================================================================ */
+    .faq-list {
+      max-width: 760px;
+      margin: 32px auto 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .faq-item[open] {
+      border-color: rgba(108,99,255,0.25);
+    }
+    .faq-item summary {
+      padding: 16px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: color 0.2s;
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after {
+      content: '+';
+      font-size: 20px;
+      color: var(--text-dim);
+      flex-shrink: 0;
+      margin-inline-start: 16px;
+      transition: transform 0.2s;
+    }
+    .faq-item[open] summary::after {
+      content: '−';
+      color: var(--accent);
+    }
+    .faq-item summary:hover { color: var(--accent2); }
+    .faq-item p {
+      padding: 0 20px 16px;
+      color: var(--text-dim);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    .faq-item p a {
+      color: var(--accent2);
+    }
+
+    /* ================================================================
+       DEMO VIDEO
+       ================================================================ */
+    .video-showcase {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .video-frame {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #000;
+      box-shadow: 0 20px 40px var(--shadow-strong);
+    }
+    .video-frame video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: #000;
+    }
+    /* The security explainer is landscape 16:9 - keep that ratio at every
+       width so it never inherits the portrait mobile override below. */
+    .video-frame--wide { padding-bottom: 56.25%; }
+
+    /* ================================================================
+       RESPONSIVE
+       ================================================================ */
+    @media (max-width: 768px) {
+      body { overflow-x: hidden; }
+      .browser-body { flex-direction: column; }
+      .side-panel { width: 100%; border-inline-start: none; border-top: 1px solid var(--border); min-height: 260px; }
+      .modes-grid { grid-template-columns: 1fr; }
+      .nav-inner { width: 100%; padding: 12px 10px; gap: 8px; }
+      .nav-brand { min-width: 0; font-size: 17px; gap: 6px; }
+      .nav-links { gap: 8px; flex-shrink: 0; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      .nav-cta { padding: 8px 14px; font-size: 12px; }
+      .lang-dropdown { max-width: 42vw; }
+      .gh-stars { display: none; }
+      /* The theme toggle would overflow the 24px-padded header at phone
+         widths. prefers-color-scheme still auto-picks the right theme
+         on mobile, so visitors aren't stranded — just no manual flip. */
+      .theme-toggle { display: none; }
+      .provider-constellation { aspect-ratio: 4 / 5; max-width: 420px; }
+      .pn-bubble { width: 46px; height: 46px; font-size: 18px; }
+      .pn-label { font-size: 11px; }
+      .cc-core { width: 64px; height: 64px; font-size: 28px; }
+      .video-showcase { max-width: 380px; }
+      .video-frame { padding-bottom: 177.78%; }
+      /* Wide (16:9) showcase stays full-width and keeps its ratio on phones. */
+      .video-showcase--wide { max-width: 100%; }
+      .video-frame--wide { padding-bottom: 56.25%; }
+    }
+    @media (max-width: 560px) {
+      /* Stack the install cards on small phones — squeezing two side-by-side
+         below this width makes the buttons too cramped to tap reliably. */
+      .download-cards { flex-wrap: wrap; max-width: 360px; }
+      .download-card,
+      .download-card-chrome { flex: 1 1 100%; }
+    }
+    @media (max-width: 480px) {
+      .hero { padding: 60px 16px 50px; }
+      .hero-actions { flex-direction: column; align-items: center; }
+      .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+
+  <!-- Theme bootstrap — runs synchronously before first paint so the page
+       opens in the visitor's chosen theme without a dark-flash. Order of
+       precedence: previously saved choice in localStorage > prefers-color-
+       scheme > dark fallback. Wrapped in try/catch because localStorage
+       can throw in private-mode Safari and some sandboxed iframes. -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('webbrain-theme');
+        var theme = (saved === 'light' || saved === 'dark')
+          ? saved
+          : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (_) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-yWGfwxkkKSVs-eTuaKYpy.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+<div class="glow-bg"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="https://webbrain.one/zh/" class="nav-brand" style="text-decoration:none;">
+      <span class="emoji">🧠</span> WebBrain<span style="opacity:0.5; font-weight:400; -webkit-text-fill-color:currentColor;">.one</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">功能</a>
+      <a href="#security">安全</a>
+      <a href="#compare">对比</a>
+      <a href="#download">下载</a>
+      <a href="#faq">常见问题</a>
+      <a href="/blog">博客</a>
+      <select class="lang-dropdown" id="lang-dropdown" aria-label="选择语言" data-current="zh">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="tr">Türkçe</option>
+        <option value="zh">中文</option>
+        <option value="ru">Русский</option>
+        <option value="uk">Українська</option>
+        <option value="ar">العربية</option>
+        <option value="ja">日本語</option>
+        <option value="ko">한국어</option>
+        <option value="id">Bahasa Indonesia</option>
+        <option value="th">ไทย</option>
+        <option value="ms">Bahasa Melayu</option>
+        <option value="tl">Filipino</option>
+      </select>
+      <button class="theme-toggle" type="button" id="theme-toggle" aria-label="切换浅色 / 深色主题" title="切换浅色 / 深色主题">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <a href="https://github.com/webbrain-one/webbrain" class="gh-stars" target="_blank" rel="noopener" id="gh-stars" data-loading="1" aria-label="在 GitHub 上为 WebBrain 加星">
+        <svg class="gh-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        <svg class="gh-star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.99 6.36L22 9.4l-5 4.96L18.18 22 12 18.5 5.82 22 7 14.36 2 9.4l7.01-1.04L12 2z"/></svg>
+        <span class="gh-count">—</span>
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <h1>开源 <span class="gradient">AI 浏览器代理</span></h1>
+  <p>WebBrain 是一款免费的开源浏览器扩展,为 Chrome 和 Firefox 带来 AI 代理能力。阅读页面、提取数据、自动化网页任务 —— 使用你选择的 LLM。专有浏览器 AI 插件的可自托管替代品。</p>
+  <div class="hero-actions">
+    <a href="#download" class="btn btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      安装扩展
+    </a>
+    <a href="https://github.com/webbrain-one/webbrain" target="_blank" class="btn btn-secondary">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      在 GitHub 查看
+    </a>
+  </div>
+
+  <!-- Browser mockup — 4 demo scenarios that cross-fade. The first scene
+       carries .is-active on load so its messages animate in immediately;
+       the rotation script swaps the class on a timer / on click. -->
+  <div class="hero-visual">
+    <div class="mockup-stack" id="mockup-stack">
+
+      <!-- Scene 1: Product extraction -->
+      <div class="browser-mockup is-active" data-scene="0">
+        <div class="browser-bar">
+          <div class="browser-dots"><span></span><span></span><span></span></div>
+          <div class="browser-url">https://example.com/products</div>
+        </div>
+        <div class="browser-body">
+          <div class="browser-page">
+            <h3>产品目录</h3>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+          </div>
+          <div class="side-panel">
+            <div class="sp-header">
+              <span class="sp-brand">🧠 WebBrain<span class="sp-domain">.one</span></span>
+              <span class="sp-status"></span>
+            </div>
+            <div class="sp-messages">
+              <div class="sp-msg user">提取本页面所有产品名称和价格</div>
+              <div class="sp-msg assistant">
+                <div class="step"><span class="check">&#10003;</span> 正在阅读页面</div>
+                <div class="step"><span class="check">&#10003;</span> 正在提取数据</div>
+                <div style="margin-top:6px;">发现 <strong>24 个产品</strong>。结果如下:</div>
+                <div style="margin-top:4px; font-size:11px; color: var(--text-dim);">
+                  1. Widget Pro — $29.99<br>
+                  2. Super Gadget — $49.99<br>
+                  3. MegaTool X — $19.99<br>
+                  <span style="color:var(--accent2);">...还有 21 个</span>
+                </div>
+              </div>
+            </div>
+            <div class="sp-input">
+              <div class="sp-input-box">针对此页面随便问点什么...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 2: Clone-this-site / website builder -->
+      <div class="browser-mockup" data-scene="1" aria-hidden="true" inert>
+        <div class="browser-bar">
+          <div class="browser-dots"><span></span><span></span><span></span></div>
+          <div class="browser-url">https://acmestudio.io</div>
+        </div>
+        <div class="browser-body">
+          <div class="browser-page page-landing">
+            <div class="pl-logo"><span class="pl-mark">⬢</span>Acme Studio</div>
+            <div class="pl-hero">
+              <div class="pl-headline">打造<em>美好</em>事物</div>
+              <div class="pl-buttons">
+                <span class="pl-btn primary"></span>
+                <span class="pl-btn"></span>
+              </div>
+            </div>
+            <div class="pl-grid">
+              <div class="pl-tile"></div>
+              <div class="pl-tile"></div>
+              <div class="pl-tile"></div>
+            </div>
+          </div>
+          <div class="side-panel">
+            <div class="sp-header">
+              <span class="sp-brand">🧠 WebBrain<span class="sp-domain">.one</span></span>
+              <span class="sp-status"></span>
+            </div>
+            <div class="sp-messages">
+              <div class="sp-msg user">为我的品牌“Lumen Coffee”做一个像这样的网站</div>
+              <div class="sp-msg assistant">
+                <div class="step"><span class="check">&#10003;</span> 正在分析布局与板块</div>
+                <div class="step"><span class="check">&#10003;</span> 正在提取字体与配色</div>
+                <div style="margin-top:6px;">已生成布局相匹配的 <strong>Lumen Coffee</strong>：</div>
+                <div style="margin-top:6px; display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+                  <span class="palette-dot" style="background:#6c63ff;"></span>
+                  <span class="palette-dot" style="background:#a78bfa;"></span>
+                  <span class="palette-dot" style="background:#f5d76e;"></span>
+                  <span class="palette-dot" style="background:#34d399;"></span>
+                  <span style="font-size:11px; color: var(--text-dim); margin-inline-start:4px;">首屏 · 功能 · 定价</span>
+                </div>
+                <div style="margin-top:4px;">
+                  <span style="color:var(--accent2);">在编辑器中打开 →</span>
+                </div>
+              </div>
+            </div>
+            <div class="sp-input">
+              <div class="sp-input-box">针对此页面随便问点什么...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 3: Social video download -->
+      <div class="browser-mockup" data-scene="2" aria-hidden="true" inert>
+        <div class="browser-bar">
+          <div class="browser-dots"><span></span><span></span><span></span></div>
+          <div class="browser-url">https://socialvid.app/@nomad/clip-8472</div>
+        </div>
+        <div class="browser-body">
+          <div class="browser-page page-video">
+            <div class="pv-frame">
+              <div class="pv-top">
+                <span></span>
+                <span class="pv-time">0:24</span>
+              </div>
+              <div class="pv-bottom">
+                <div class="pv-username">@nomad</div>
+                <div class="pv-caption">博德鲁姆日落延时摄影</div>
+              </div>
+              <div class="pv-actions">
+                <span>♥</span>
+                <span>💬</span>
+                <span>↗</span>
+              </div>
+            </div>
+          </div>
+          <div class="side-panel">
+            <div class="sp-header">
+              <span class="sp-brand">🧠 WebBrain<span class="sp-domain">.one</span></span>
+              <span class="sp-status"></span>
+            </div>
+            <div class="sp-messages">
+              <div class="sp-msg user">下载这个视频</div>
+              <div class="sp-msg assistant">
+                <div class="step"><span class="check">&#10003;</span> 正在定位视频流</div>
+                <div class="step"><span class="check">&#10003;</span> 正在获取 MP4</div>
+                <div style="margin-top:6px;">已保存到 <strong>Downloads/nomad-bodrum.mp4</strong></div>
+                <div style="margin-top:4px; font-size:11px; color: var(--text-dim);">1080p · 24s · 4.2 MB</div>
+              </div>
+            </div>
+            <div class="sp-input">
+              <div class="sp-input-box">针对此页面随便问点什么...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 4: Follow-up question (two-turn conversation) -->
+      <div class="browser-mockup" data-scene="3" aria-hidden="true" inert>
+        <div class="browser-bar">
+          <div class="browser-dots"><span></span><span></span><span></span></div>
+          <div class="browser-url">https://magazine.dev/local-ai-2026</div>
+        </div>
+        <div class="browser-body">
+          <div class="browser-page page-article">
+            <h3>本地 AI 的未来</h3>
+            <div class="pa-meta">作者 Jane Smith · 8 分钟阅读</div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+            <div class="placeholder-line"></div>
+          </div>
+          <div class="side-panel">
+            <div class="sp-header">
+              <span class="sp-brand">🧠 WebBrain<span class="sp-domain">.one</span></span>
+              <span class="sp-status"></span>
+            </div>
+            <div class="sp-messages">
+              <div class="sp-msg user">总结这篇文章</div>
+              <div class="sp-msg assistant">本地 LLM 如今在许多任务上已能媲美云端质量 —— 这得益于更优的量化、更快的消费级 GPU，以及隐私优先的转向。</div>
+              <div class="sp-msg user user-2">作者对 2026 年有何预测？</div>
+              <div class="sp-msg assistant assistant-2">
+                <div class="step"><span class="check">&#10003;</span> 正在回顾文章上下文</div>
+                <div style="margin-top:6px;">作者预计到 <strong>2026</strong> 年，超过 70% 的消费级 AI 工作负载将在设备端运行。</div>
+              </div>
+            </div>
+            <div class="sp-input">
+              <div class="sp-input-box">针对此页面随便问点什么...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="scene-nav" role="tablist" aria-label="切换演示场景">
+      <button class="scene-dot is-active" type="button" data-scene="0" role="tab" aria-selected="true" aria-label="产品提取演示"></button>
+      <button class="scene-dot" type="button" data-scene="1" role="tab" aria-selected="false" aria-label="克隆此站点演示"></button>
+      <button class="scene-dot" type="button" data-scene="2" role="tab" aria-selected="false" aria-label="视频下载演示"></button>
+      <button class="scene-dot" type="button" data-scene="3" role="tab" aria-selected="false" aria-label="追问演示"></button>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO VIDEO -->
+<section class="section" id="demo" style="padding-top: 30px;">
+  <div class="section-label">演示</div>
+  <h2 class="section-title">观看 WebBrain 实战</h2>
+  <p class="section-subtitle">看看 WebBrain 如何阅读页面、提取数据并自动化浏览器任务。</p>
+  <div class="video-showcase">
+    <div class="video-frame">
+      <video id="demo-video" data-desktop-src="/assets/demo-desktop.mp4" data-mobile-src="/assets/demo-mobile.mp4" controls preload="metadata" playsinline></video>
+    </div>
+  </div>
+</section>
+
+<!-- SECURITY VIDEO -->
+<section class="section" id="security" style="padding-top: 30px;">
+  <div class="section-label">安全</div>
+  <h2 class="section-title">WebBrain 如何让你保持掌控</h2>
+  <p class="section-subtitle">浏览器是真正工作发生的地方，也是一块对抗性表面。WebBrain 从只读的询问模式开始，行动前先请求确认，防御隐藏的提示注入，并用更严格的规则处理敏感字段。</p>
+  <div class="video-showcase video-showcase--wide">
+    <div class="video-frame video-frame--wide">
+      <video id="security-video" data-desktop-src="/assets/security-desktop.mp4" data-mobile-src="/assets/security-mobile.mp4" poster="/assets/security-poster.jpg" controls preload="none" playsinline></video>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="section-label">功能</div>
+  <h2 class="section-title">浏览器 AI 所需的一切</h2>
+  <p class="section-subtitle">一个功能齐全的 AI 代理,驻扎在浏览器侧边栏,能理解任何网页。</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">📖</div>
+      <h3>页面理解</h3>
+      <p>读懂任何网页 —— 文章、文档、仪表板、表单。对当前页面内容提问并立即获得答案。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🤖</div>
+      <h3>完整浏览器代理</h3>
+      <p>代你点击、输入、滚动、导航,并与页面交互。用自然语言指令自动化重复性任务。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <h3>数据提取</h3>
+      <p>从任何页面提取结构化数据 —— 表格、列表、链接、表单。导出产品目录、搜索结果或任何页面内容。支持 PDF。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔌</div>
+      <h3>多提供商 LLM</h3>
+      <p>兼容本地 llama.cpp、OpenAI、Claude 和 OpenRouter。使用你偏好的模型 —— 或用本地 AI 完全离线运行。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <h3>隐私优先</h3>
+      <p>你的数据依然属于你。配合本地 LLM 零数据泄露。无遥测、无追踪、无需账号。完全开源。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>智能上下文</h3>
+      <p>自动上下文管理防止 token 溢出。智能裁剪对话历史并限制工具输出,让会话顺畅不中断。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">👁️</div>
+      <h3>专用视觉模型</h3>
+      <p>用一个快速的纯文本模型做规划,再配一个专门的视觉模型读取截图。比用一个庞大的多模态模型做所有事情更便宜也更快。</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">👤</div>
+      <h3>个人资料自动填写</h3>
+      <p>可选的纯文本自述 —— 姓名、工作邮箱、公司、一个一次性密码 —— 让代理无需每次询问即可轻松完成低风险注册表单。默认关闭,全部在本地存储。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🍪</div>
+      <h3>识别 Cookie 与付费墙</h3>
+      <p>在推理页面之前关闭常见框架的同意横幅(OneTrust、Cookiebot、Didomi、Quantcast)。检测到付费墙会如实告知,而不是编造文章内容或尝试绕过。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧩</div>
+      <h3>Optional CAPTCHA Solver</h3>
+      <p>Plug in a <a href="https://capsolver.com" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">CapSolver</a> API key and the agent will auto-solve reCAPTCHA v2/v3, hCaptcha, and Cloudflare Turnstile when they block a step — instead of stopping to ask. Off by default, BYO key, no captcha service is shipped or contacted unless you turn it on.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🌐</div>
+      <h3>多语言界面</h3>
+      <p>插件提供 English、Español、Français、Türkçe 和 中文 五种语言。首次使用时自动检测浏览器语言;随时可通过侧边栏中的地球图标切换。本站也相应本地化。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💰</div>
+      <h3>节省 token</h3>
+      <p>截图在离开你的机器之前会先按比例缩放并迭代 JPEG 压缩,让图像 token 保持很小。智能上下文裁剪和工具输出上限让云端费用可预测 —— 长会话不会出现意外支出。</p>
+    </div>
+  </div>
+</section>
+
+<!-- PROVIDERS -->
+<section class="section" id="providers" style="padding-top: 40px;">
+  <div class="section-label">LLM 提供商</div>
+  <h2 class="section-title">自带 AI</h2>
+  <p class="section-subtitle">连接任何 OpenAI 兼容 API,或运行一个本地模型。随时在扩展设置中切换提供商。</p>
+
+  <!-- Constellation: central WebBrain core, 11 provider nodes orbiting on
+       two arcs (5 above, 6 below). Connection lines drawn in SVG (viewBox
+       is in % units via a 0–100 coordinate space so the line endpoints
+       follow the % values used to position each node). The node order
+       matches the line order so JS can map a hovered node → its line for
+       highlight. Local runtimes (llama.cpp, Ollama, LM Studio, vLLM) are
+       on the left edges of each arc; cloud providers fan out toward the
+       right. Grok / Gemini / DeepSeek / Mistral are reached via the
+       OpenAI-compatible config — any OpenAI-style endpoint works. -->
+  <div class="provider-constellation" aria-label="自带 AI">
+    <svg class="constellation-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <!-- order: llama.cpp, ollama, openai, anthropic, openrouter, lmstudio, vllm, grok, gemini, deepseek, mistral -->
+      <line x1="50" y1="50" x2="10" y2="28"></line>
+      <line x1="50" y1="50" x2="28" y2="12"></line>
+      <line x1="50" y1="50" x2="50" y2="6"></line>
+      <line x1="50" y1="50" x2="72" y2="12"></line>
+      <line x1="50" y1="50" x2="90" y2="28"></line>
+      <line x1="50" y1="50" x2="8" y2="72"></line>
+      <line x1="50" y1="50" x2="24" y2="88"></line>
+      <line x1="50" y1="50" x2="40" y2="95"></line>
+      <line x1="50" y1="50" x2="60" y2="95"></line>
+      <line x1="50" y1="50" x2="76" y2="88"></line>
+      <line x1="50" y1="50" x2="92" y2="72"></line>
+    </svg>
+
+    <div class="constellation-center" aria-hidden="true">
+      <div class="cc-ring cc-ring-2"></div>
+      <div class="cc-ring"></div>
+      <div class="cc-core">🧠</div>
+    </div>
+
+    <a class="provider-node" href="https://github.com/ggerganov/llama.cpp" target="_blank" rel="noopener" style="--x: 10%; --y: 28%; --d: 0s;" data-line="0">
+      <div class="pn-bubble local">🦙</div>
+      <div class="pn-label">llama.cpp</div>
+    </a>
+    <a class="provider-node" href="https://ollama.com" target="_blank" rel="noopener" style="--x: 28%; --y: 12%; --d: 0.6s;" data-line="1">
+      <div class="pn-bubble ollama">◉</div>
+      <div class="pn-label">Ollama</div>
+    </a>
+    <a class="provider-node" href="https://platform.openai.com" target="_blank" rel="noopener" style="--x: 50%; --y: 6%; --d: 1.2s;" data-line="2">
+      <div class="pn-bubble openai">⬡</div>
+      <div class="pn-label">OpenAI</div>
+    </a>
+    <a class="provider-node" href="https://www.anthropic.com" target="_blank" rel="noopener" style="--x: 72%; --y: 12%; --d: 1.8s;" data-line="3">
+      <div class="pn-bubble anthropic">◈</div>
+      <div class="pn-label">Claude</div>
+    </a>
+    <a class="provider-node" href="https://openrouter.ai" target="_blank" rel="noopener" style="--x: 90%; --y: 28%; --d: 2.4s;" data-line="4">
+      <div class="pn-bubble openrouter">◆</div>
+      <div class="pn-label">OpenRouter</div>
+    </a>
+    <a class="provider-node" href="https://lmstudio.ai" target="_blank" rel="noopener" style="--x: 8%; --y: 72%; --d: 3.0s;" data-line="5">
+      <div class="pn-bubble studiolm">✦</div>
+      <div class="pn-label">LM Studio</div>
+    </a>
+    <a class="provider-node" href="https://docs.vllm.ai" target="_blank" rel="noopener" style="--x: 24%; --y: 88%; --d: 3.6s;" data-line="6">
+      <div class="pn-bubble vllm">▣</div>
+      <div class="pn-label">vLLM</div>
+    </a>
+    <a class="provider-node" href="https://x.ai/api" target="_blank" rel="noopener" style="--x: 40%; --y: 95%; --d: 4.2s;" data-line="7">
+      <div class="pn-bubble grok">✕</div>
+      <div class="pn-label">Grok</div>
+    </a>
+    <a class="provider-node" href="https://ai.google.dev/gemini-api/docs/openai" target="_blank" rel="noopener" style="--x: 60%; --y: 95%; --d: 4.8s;" data-line="8">
+      <div class="pn-bubble gemini">◊</div>
+      <div class="pn-label">Gemini</div>
+    </a>
+    <a class="provider-node" href="https://api-docs.deepseek.com" target="_blank" rel="noopener" style="--x: 76%; --y: 88%; --d: 5.4s;" data-line="9">
+      <div class="pn-bubble deepseek">⬣</div>
+      <div class="pn-label">DeepSeek</div>
+    </a>
+    <a class="provider-node" href="https://docs.mistral.ai/api/" target="_blank" rel="noopener" style="--x: 92%; --y: 72%; --d: 6.0s;" data-line="10">
+      <div class="pn-bubble mistral">▲</div>
+      <div class="pn-label">Mistral</div>
+    </a>
+  </div>
+</section>
+
+<!-- MODES -->
+<section class="section" id="modes" style="display:none;">
+  <div class="section-label">交互模式</div>
+  <h2 class="section-title">询问或执行</h2>
+  <p class="section-subtitle">两种模式应对不同需求。默认只读,需要时则具备完整代理能力。</p>
+
+  <div class="modes-grid">
+    <div class="mode-card ask">
+      <div class="mode-icon">💬</div>
+      <h3>询问模式</h3>
+      <p>只读。就当前页面提问、提取信息、总结内容。安全且不具侵入性 —— 不会修改任何内容。</p>
+    </div>
+    <div class="mode-card act">
+      <div class="mode-icon">⚡</div>
+      <h3>执行模式</h3>
+      <p>完整代理。点击按钮、填写表单、在页面间导航、运行脚本。用一条指令自动化复杂的多步骤浏览器工作流。</p>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section class="section download-section" id="download">
+  <div class="section-label">开始使用</div>
+  <h2 class="section-title">安装 WebBrain</h2>
+  <p class="section-subtitle">支持 Chrome 和 Firefox。免费、开源、无需账号。</p>
+
+  <div class="download-cards">
+    <div class="download-card download-card-chrome">
+      <div class="browser-icon">🌐</div>
+      <h3>Chrome 与 Chromium</h3>
+      <p>Manifest V3 · Chrome 116+ · 同时适用于 Brave、Edge、Opera、Vivaldi 等 Chromium 兼容浏览器。</p>
+      <div class="download-card-actions">
+        <a href="https://chromewebstore.google.com/detail/webbrain/ljhijonmfahplgbbacgcfnaihbjljhhb" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          从 Chrome 应用商店下载
+        </a>
+        <a href="https://github.com/webbrain-one/webbrain/tree/main/src/chrome" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+          查看 Chrome 源代码
+        </a>
+      </div>
+    </div>
+    <div class="download-card download-card-firefox">
+      <div class="browser-icon">🦊</div>
+      <h3>Firefox</h3>
+      <p>Manifest V2 · Firefox 109+</p>
+      <div class="download-card-actions">
+        <a href="https://addons.mozilla.org/en-US/firefox/addon/webbrain/" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="background: #ff9800;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          从 Firefox 附加组件下载
+        </a>
+        <a href="https://github.com/webbrain-one/webbrain/tree/main/src/firefox" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+          查看 Firefox 源代码
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARISON TABLE -->
+<section class="section" id="compare">
+  <div class="section-label">为什么选择 WebBrain?</div>
+  <h2 class="section-title">WebBrain 与其他工具相比如何?</h2>
+  <p class="section-subtitle">WebBrain 位于浏览器原生 AI 插件与完整代理框架之间。以下是它的定位。</p>
+
+  <!-- vs Browser Plugins -->
+  <h3 style="font-size:16px; color:var(--text-dim); margin-bottom:16px; text-align:center;">对比浏览器 AI 插件</h3>
+  <div class="compare-table-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>特性</th>
+          <th class="highlight">WebBrain</th>
+          <th>Chrome 中的 Claude</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>开源</td><td class="highlight">MIT 许可</td><td>闭源</td></tr>
+        <tr><td>价格</td><td class="highlight">永久免费</td><td>需要 Claude Pro(20 美元/月)</td></tr>
+        <tr><td>本地 LLM 支持</td><td class="highlight">llama.cpp、Ollama</td><td>否 —— 仅限 Claude</td></tr>
+        <tr><td>多提供商</td><td class="highlight">All OpenAI-compatible endpoints</td><td>仅限 Claude</td></tr>
+        <tr><td>Chrome</td><td class="highlight">是(MV3)</td><td>是</td></tr>
+        <tr><td>Firefox</td><td class="highlight">是(MV2)</td><td>否</td></tr>
+        <tr><td>侧边栏 UI</td><td class="highlight">是</td><td>是</td></tr>
+        <tr><td>询问 / 执行 模式</td><td class="highlight">是</td><td>类似</td></tr>
+        <tr><td>完全离线</td><td class="highlight">是(使用本地 LLM)</td><td>否 —— 需要云端</td></tr>
+        <tr><td>可自托管</td><td class="highlight">是</td><td>否</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- vs Agent Frameworks -->
+  <h3 style="font-size:16px; color:var(--text-dim); margin: 40px 0 16px; text-align:center;">对比 AI 代理框架 <span style="font-weight:400; font-size:13px;">(不同品类)</span></h3>
+  <div class="compare-table-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>维度</th>
+          <th class="highlight">WebBrain</th>
+          <th>OpenClaw / Browser-Use / 等</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>是什么?</td><td class="highlight">浏览器扩展(面向终端用户的工具)</td><td>代理框架 / SDK(面向开发者的工具)</td></tr>
+        <tr><td>目标用户</td><td class="highlight">任何人 —— 无需编码</td><td>构建自动化的开发者</td></tr>
+        <tr><td>安装</td><td class="highlight">一键浏览器安装</td><td>需要 Python/Docker 环境</td></tr>
+        <tr><td>界面</td><td class="highlight">内置侧边栏聊天</td><td>无 UI —— 仅代码或 API</td></tr>
+        <tr><td>浏览器控制</td><td>Content script(轻量)</td><td>CDP / Playwright(完全控制)</td></tr>
+        <tr><td>多标签工作流</td><td>按标签独立会话</td><td>可编程多标签编排</td></tr>
+        <tr><td>无头模式</td><td>否 —— 在你的浏览器中运行</td><td>是 —— 无头自动化</td></tr>
+        <tr><td>可扩展性</td><td>添加自定义 LLM 提供商</td><td>完整 Python SDK、自定义工具</td></tr>
+        <tr><td>最适合</td><td class="highlight">日常浏览的 AI 助手</td><td>自动化抓取 / 测试流水线</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="text-align:center; color:var(--text-dim); font-size:13px; margin-top:24px; max-width:600px; margin-left:auto; margin-right:auto;">
+    WebBrain 是面向终端用户的浏览器扩展,适合希望在浏览时有 AI 助手陪伴的人。像 OpenClaw 这样的代理框架则是开发者用来构建自动化浏览器流水线的工具。不同工具适合不同工作 —— 两者可以并用。
+  </p>
+</section>
+
+<!-- FAQ -->
+<section class="section" id="faq">
+  <div class="section-label">常见问题</div>
+  <h2 class="section-title">常见问题解答</h2>
+
+  <div class="faq-list">
+    <details class="faq-item">
+      <summary>WebBrain 是 Claude 浏览器插件的免费替代品吗?</summary>
+      <p>是的。WebBrain 提供类似的 AI 浏览器代理能力 —— 阅读页面、提取数据、点击按钮、填写表单并自动化多步骤工作流。与需要 Claude Pro 订阅且仅支持 Anthropic 模型的专有 Claude 插件不同,WebBrain 完全免费、开源(MIT 许可),并支持多个 LLM 提供商,包括完全在你的机器上运行的本地模型。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>WebBrain Cloud 订阅多少钱？</summary>
+      <p>WebBrain Cloud 目前为<strong>每个设备配置文件每月 5 美元</strong>，暂时比 Claude Pro 便宜得多。当前用量在公平使用政策下不限量：正常个人使用没问题，但不允许滥用、自动化刷量、转售或异常高流量使用。</p><p>订阅绑定到扩展为该浏览器 + 操作系统 GUID 生成的设备标识符，而不是用户账户。如果你重置扩展存储、删除浏览器配置文件、重新安装浏览器、更换浏览器/操作系统或丢失设备而导致该标识符丢失，我们无法找回或转移，也不会因此退款。</p><p>你可以在插件设置页的<strong>账户</strong>区域通过<strong>管理账单</strong>按钮订阅或管理账单。若要手动取消，请用结账时使用的邮箱地址给我们发邮件。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>WebBrain 与 OpenClaw、Browser-Use 以及其他 AI 代理框架有何不同?</summary>
+      <p>它们属于不同类别的工具。WebBrain 是浏览器扩展 —— 你在 Chrome 或 Firefox 中安装它,并在侧边栏中与它对话,无需编码。OpenClaw 和 Browser-Use 等框架是面向开发者的 SDK,用 Python 构建自动化浏览器流水线,通常使用无头浏览器和 CDP。换句话说:WebBrain 用于日常浏览时的 AI 助手;代理框架用于构建抓取机器人和测试自动化。你可以同时使用 —— 二者互补。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>我能完全离线使用 WebBrain 吗?</summary>
+      <p>可以。WebBrain 的默认提供商是 llama.cpp,它在你的电脑上运行本地 AI 模型。无需 API 密钥,AI 无需互联网,数据不会离开你的机器。下载一个 GGUF 模型,启动 llama-server,你就拥有了一个完全私有的 AI 浏览器代理。你也可以通过 OpenAI 兼容端点使用 Ollama。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>WebBrain 支持哪些 AI 模型?</summary>
+      <p>WebBrain 支持四类提供商:llama.cpp(任意本地 GGUF 模型)、OpenAI(GPT-4o、GPT-4 等)、Claude(通过原生 API 使用 Claude Opus、Sonnet、Haiku)以及 OpenRouter(访问多家提供商的 100 多种模型)。任何 OpenAI 兼容的 API 端点都能工作,因此你也可以使用 Together AI、Groq、Mistral 等服务,或任何提供 OpenAI 兼容接口的本地服务器。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>最推荐的模型是什么?</summary>
+      <p>截至 <strong>2026 年 4 月 21 日</strong>,最推荐的是 <a href="https://huggingface.co/Qwen/Qwen3.6-35B-A3B" target="_blank">Qwen 3.6 35B</a>。原因:在我们的视觉基准测试中(<a href="https://www.webbrain.one/blog/vision-model-shootout" target="_blank">vision-model-shootout</a>),它在截图理解方面超过了 Gemma 4,同时对本地推理仍然可行。</p><p>在消费级 GPU 上,RTX 5090 是理想选择;RTX 4090 通常可借助 <a href="https://huggingface.co/Intel/Qwen3.6-35B-A3B-int4-AutoRound" target="_blank">Intel/Qwen3.6-35B-A3B-int4-AutoRound</a> 的 INT4 AutoRound 量化运行。</p><p>追求最高速度时,推荐使用 <strong>vLLM</strong> 提供服务。示例命令:</p><p><code>python -u -m vllm.entrypoints.openai.api_server --model Intel/Qwen3.6-35B-A3B-int4-AutoRound --served-model-name qwen3.6-35b --quantization auto --dtype bfloat16 --max-model-len 65536 --max-num-batched-tokens 32768 --max-num-seqs 4 --host 0.0.0.0 --port 8000 --gpu-memory-utilization 0.92 --enable-prefix-caching --enable-chunked-prefill --limit-mm-per-prompt '{"image": 4, "video": 1}' --mm-processor-cache-type shm --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder --trust-remote-code --allowed-origins '["*"]' --speculative-config '{"method": "dflash", "model": "z-lab/Qwen3.6-35B-A3B-DFlash", "num_speculative_tokens": 15}' --attention-backend flash_attn</code></p><p><em>DFlash 推测解码是可选项。</em></p>
+    </details>
+
+    <details class="faq-item">
+      <summary>连接到我网络上的本地 LLM 服务器(vLLM、Ollama、llama.cpp)时出现「Failed to fetch」</summary>
+      <p>如果你的 LLM 服务器在本地网络中的另一台机器上(例如 <code>http://192.168.1.x:8000</code>),除非服务器发送 <strong>CORS 头</strong>,否则 Chrome 会拦截该请求。解决方案因服务器而异:</p><p><strong>vLLM:</strong>启动时添加 <code>--allowed-origins '["*"]'</code>(值必须是 JSON 列表)。<br><strong>Ollama:</strong>启动前设置环境变量 <code>OLLAMA_ORIGINS=*</code>。<br><strong>llama.cpp:</strong>默认启用 CORS,无需更改。</p><p>如果你的服务器运行在 <code>localhost</code>(与浏览器同一台机器),通常不需要 CORS。该问题仅影响本地网络上跨机器的连接。请确保 WebBrain 设置中的基础 URL 以 <code>/v1</code> 结尾(例如 <code>http://192.168.1.47:8000/v1</code>)。 例外：从浏览器扩展使用 Ollama 时仍可能需要 <code>OLLAMA_ORIGINS</code>；请参见下方的 Ollama FAQ。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>为什么 localhost 上的 Ollama 会对 WebBrain 扩展返回 403？</summary>
+      <p>较新的 Ollama 版本即使运行在同一台机器上，也可能拒绝来自浏览器扩展来源的请求。扩展会发送类似 <code>chrome-extension://...</code> 或 <code>moz-extension://...</code> 的 <code>Origin</code>，如果未允许这些来源，Ollama 可能返回 403。</p><p>先退出任何已经占用 <code>11434</code> 端口的 Ollama 桌面应用，然后用以下命令之一启动 Ollama：</p><p><code>OLLAMA_ORIGINS="*" ollama serve</code><br><code>OLLAMA_ORIGINS="chrome-extension://*,moz-extension://*" ollama serve</code></p><p>将 WebBrain 的 Ollama Base URL 保持为 <code>http://localhost:11434/v1</code>。终端中的 <code>curl</code> 检查即使没有这个设置也可能正常工作，因为它们不会发送浏览器扩展来源。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>WebBrain 在 Firefox 上能用吗?</summary>
+      <p>能。WebBrain 同时提供 Chrome 版(使用 sidePanel API 的 Manifest V3)和 Firefox 版(使用 sidebar_action 的 Manifest V2)。两个版本功能一致。Firefox 版本可以作为临时附加组件用于开发,也可以发布到 addons.mozilla.org 进行永久安装。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>我可以像 Chrome 那样把 Firefox 的侧边栏从左边移到右边吗?</summary>
+      <p>可以 —— Firefox 的侧边栏默认显示在左侧,但你可以把它切换到右侧。在侧边栏标题栏上右键点击,选择<strong>「将侧边栏移到右侧」</strong>(也可以从菜单栏走<strong>「查看 → 侧边栏 → 将侧边栏移到右侧」</strong>)。重启后位置保持不变。Chrome 的 sidePanel 默认在右侧,且无法由用户从面板本身移动。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>使用 WebBrain 安全吗?它能修改网页吗?</summary>
+      <p>WebBrain 有两种模式:询问模式(默认)只读,无法修改页面上的任何内容。执行模式启用完整的浏览器代理能力(点击、输入、导航),但在启用前需要用户显式确认,并会显示明显的警告横幅。你可以随时通过「停止」按钮停止代理。扩展的源代码在 GitHub 上完全开放供审计。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>「WebBrain started debugging this browser」横幅是什么?WebBrain 为什么使用 CDP?</summary>
+      <p>为了可靠地在页面上执行操作,WebBrain 通过标准的 <code>chrome.debugger</code> 扩展 API 使用 Chrome DevTools Protocol(CDP)——这也是触发 Chrome「WebBrain started debugging this browser」横幅的原因。CDP 让代理能够以现代网站真正接受的<strong>可信输入事件</strong>进行点击和输入;从 content script 派发的合成事件会被许多网站、Web Components 以及由框架控制的输入字段拒绝。WebBrain 也借此为视觉回退捕获像素级精确的截图,并访问 content script 看不到的<strong>跨域 iframe 和 shadow DOM</strong>。</p><p>只读的<strong>询问模式不需要 CDP</strong>——页面和无障碍树的读取都通过普通的 content script 完成。需要它的是<strong>执行模式</strong>的可靠性和跨域操作;而在 Manifest V3 扩展中,没有任何无需调试器的 API 能提供可信输入。WebBrain <strong>仅在某个操作需要时</strong>才按标签页附加调试器,而且整个扩展都是开源的,你可以审计会话究竟做了什么。CDP 很强大,因此我们把它的影响范围当作需要约束的东西(按需附加、读取不经过它),进一步收紧它已列入我们的安全路线图。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>它问我的问题太多了。可以关闭吗？</summary>
+      <p>这些批准提示是为了保护你的安全。即使在你信任的网站上，恶意行为者也可能伪造 LLM 指令或注入内容，试图让代理代表你执行你不会同意的操作。因此，WebBrain 在执行有后果的操作之前始终需要你的批准。如果你仍然不想经过这些提示，也可以关闭它们：打开侧边插件，点击标题栏中的齿轮图标，进入 <code>settings.html</code> 的 <strong>Permissions</strong> 标签页，然后关闭 <strong>Ask before consequential actions</strong> 选项。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>如何用 WebBrain 进行网页抓取和数据提取?</summary>
+      <p>打开任意网页,打开 WebBrain 侧边栏,用自然语言提问:「提取本页面所有产品名称和价格」、「获取本页面所有邮箱地址」或「用要点总结这篇文章」。AI 代理会读取页面内容、理解结构并返回提取的数据。对于更复杂的抓取,切换到执行模式,代理可以在页面间导航、点击分页按钮,并在多个页面上聚合数据。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>WebBrain 是直接调用 API,还是始终通过界面点击?</summary>
+      <p>默认情况下,WebBrain 对任何会创建、修改、删除、发送、提交、发布或购买的操作,<strong>始终通过可见界面进行</strong>。它会导航到页面、填写表单、点击按钮 —— 完全像你一样操作。它拒绝在后台通过 <code>fetch()</code> 直接调用 REST/GraphQL 端点进行变更。这是刻意设计:API 操作是不可见的(你看不到发送了什么),通常需要你可能未配置的单独认证令牌,而且相比于一次可见的误点击,影响范围大得多。UI-first 意味着一切都在屏幕上、在你平时的浏览器会话中、并且可中断。</p><p>对于<strong>读取</strong>数据 —— 获取 README、查找议题、跨站比价、检查状态页 —— WebBrain 会自由地通过 <code>fetch_url</code> 和 <code>research_url</code> 工具发送后台 HTTP 请求。读取不等于操作;它不会改变远程服务上的任何东西,因此不存在同样的安全顾虑。</p><p>如果你希望在某个具体任务上允许 API 变更,请在消息开头输入 <code>/allow-api</code>(可以后跟一段简短的任务描述)。这个按会话生效的覆盖会让 WebBrain 在界面确实失败或不可用时回退到 API 端点,但只要界面可用仍优先使用界面。覆盖启用期间,输入区上方会显示一枚置顶徽章,重置会话后该标志会清除。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>我能在 LM Studio 里也用吗?</summary>
+      <p>可以。WebBrain 的只读网络工具 —— <code>fetch_url</code> 和 <code>research_url</code> —— 也作为独立的 <a href="https://lmstudio.ai" target="_blank">LM Studio</a> 插件发布在 <a href="https://lmstudio.ai/webbrain/web-tools" target="_blank">webbrain/web-tools</a>。用 <code>lms clone webbrain/web-tools</code> 安装,然后在任意 LM Studio 聊天里开启 —— 任何支持工具调用的模型都能调用这两个工具,你不需要安装浏览器扩展。纯 Node,无 headless 浏览器。源码:<a href="https://github.com/webbrain-one/webbrain/tree/main/lmstudio-plugin" target="_blank">lmstudio-plugin/</a>。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>WebBrain 在某个页面上工作时,我能切换到别的标签吗?</summary>
+      <p>在 Chrome 上可以 —— 代理运行在后台 service worker 中,并绑定在启动它的标签上,因此即使你把焦点切到别处,它也会继续在那个特定标签上点击、输入和读取。针对标签的工具(CDP 的点击、输入、导航、截图)在 Chrome 中对后台标签同样有效。任务进行期间,侧边栏会锁定输入,防止你在新标签上意外启动第二个任务 —— 你需要等当前任务完成或手动停止它。需要注意的是,浏览器会限制后台标签上的计时器和动画,因此动画繁多的站点响应可能略慢。</p><p>在 Firefox 上,代理也会继续在其原始标签上运行,但自动截图会受限:Firefox 的截图 API 只能捕获当前活动标签,无法抓取后台的某个具体标签。WebBrain 会识别这一点,并在该轮跳过截图,而不是把一张无关页面的图像喂给模型。代理会继续基于文本上下文进行规划,直到你切回它的标签。</p><p><strong>请避免在代理正在工作的同一标签上主动点击或输入</strong> —— 这会造成你和代理争抢同一页面的竞态条件。切换标签没问题;共同驾驶同一标签则不行。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>个人资料自动填写如何工作?它安全吗?</summary>
+      <p>个人资料自动填写是 <strong>设置 → 个人资料</strong> 中的可选功能。你输入一段简短的自述 —— 姓名、工作邮箱、公司以及用于低风险注册的<em>一次性</em>密码 —— 然后将其打开。启用后,WebBrain 会将这段文本附加到代理的系统提示中,这样它就能无需每次询问即可填写注册表单。</p><p>该文本以<strong>明文</strong>保存在浏览器的本地存储中。它<strong>不会</strong>被传送到 WebBrain 项目,但<strong>会</strong>在每一轮作为系统提示的一部分发送给你配置的 LLM 提供商。默认关闭。</p><p><strong>不要在此放置重要账户的密码</strong>(Google、Apple、iCloud、银行、公司 SSO、主邮箱)。这些账户应启用 2FA,而且本就不该交给代理。预期用途是你在订阅通讯和免费试用注册时反复使用的一次性密码。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>WebBrain 如何处理 Cookie 横幅和付费墙?</summary>
+      <p><strong>Cookie 横幅:</strong>WebBrain 能识别常见框架(OneTrust、Cookiebot、Didomi、Quantcast、Google Funding Choices、TrustArc)的同意横幅,并在对页面进行推理之前将其关闭。当「全部拒绝」/「拒绝非必要」/「仅必要」清晰可见时优先选择这些选项;否则会退而点击「全部接受」,而不是陷入「管理偏好」的迷宫。</p><p><strong>付费墙:</strong>WebBrain 会如实报告付费墙,并告诉你它实际看到了什么(标题、副标题、开头几段)。它<strong>不会</strong>尝试绕过付费墙 —— 不使用 archive.today、12ft.io、不清除 Cookie、不禁用 JS、不使用阅读模式小技巧。如果你想要完整文章,请使用订阅登录,或请 WebBrain 搜索同一报道的免费报道。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>WebBrain 支持 dry-run（演练）模式吗？</summary>
+      <p>截至 <strong>7.0.0</strong> 版本, 还不支持。dry-run 模式已在路线图中, 后续会提供。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>WebBrain 如何控制云端 LLM 的账单?</summary>
+      <p>三个独立的层:</p><p><strong>节省 token 的截图。</strong>在任何图像离开你的机器之前,WebBrain 会先缩放它(短边封顶,保持宽高比),然后迭代 JPEG 压缩直到适配每轮的图像 token 预算。一张 2000×1200 的截图,在 GPT-4o 上原本大约要花 1500 个输入 token,可被压缩到约 300–500 个 token,对页面阅读任务来说没有实际损失。实现位于 <code>_fitImageDimensions</code>,并有覆盖预算计算的单元测试。</p><p><strong>智能上下文裁剪。</strong>对话历史、工具输出和内联 DOM 转储都会按每轮加以限制,当活跃模型的上下文窗口接近占满时,会从最早的内容开始裁剪。你不会看到一次运行因为一次 <code>read_page</code> 返回了一篇长篇大论,就从 1 万 token 悄悄膨胀到 10 万。</p><p><strong>专用视觉模型。</strong>将便宜的文本模型(如 GPT-4o-mini)用于规划和工具调用,再配一个专门的视觉模型(如 GPT-4o)只用于截图,这样你不必在每一轮都支付多模态模型的价格。可在 <strong>设置 → 视觉</strong> 中配置。</p><p>结果:与云端提供商的长会话保持可预测。如需完全控制,请使用本地 llama.cpp —— 每 token 成本为零。</p>
+    </details>
+
+    <details class="faq-item">
+      <summary>我可以为 WebBrain 做贡献吗?</summary>
+      <p>当然可以!WebBrain 采用 MIT 许可,欢迎贡献。请查看 <a href="https://github.com/webbrain-one/webbrain" target="_blank">GitHub 仓库</a> 了解议题、功能请求和贡献指南。</p>
+    </details>
+  </div>
+</section>
+
+<!-- SPREAD THE WORD / OPEN SOURCE -->
+<section class="section">
+  <div class="oss-banner">
+    <h3>传播开来,分享这份热爱</h3>
+    <p>WebBrain 采用 MIT 许可,完全在你的浏览器中运行。如果你觉得有用,请给个星或分享出去 —— 独立开源项目就是靠这种方式被人发现的。</p>
+    <div class="share-row">
+      <a href="https://github.com/webbrain-one/webbrain" target="_blank" rel="noopener" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.57.1.78-.25.78-.55 0-.27-.01-1-.02-1.97-3.2.7-3.87-1.54-3.87-1.54-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.18 1.18.92-.26 1.91-.39 2.9-.39.99 0 1.98.13 2.9.39 2.21-1.49 3.18-1.18 3.18-1.18.62 1.59.23 2.76.11 3.05.74.81 1.18 1.84 1.18 3.1 0 4.42-2.69 5.4-5.25 5.68.41.36.78 1.06.78 2.13 0 1.54-.01 2.79-.01 3.17 0 .31.21.66.79.55C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+        ⭐ 在 GitHub 上加星
+      </a>
+      <a href="https://x.com/intent/post?text=WebBrain%20%E2%80%94%20Chrome%20%E5%92%8C%20Firefox%20%E4%B8%8A%E5%85%8D%E8%B4%B9%E7%9A%84%E5%BC%80%E6%BA%90%20AI%20%E6%B5%8F%E8%A7%88%E5%99%A8%E4%BB%A3%E7%90%86%E3%80%82%E5%A4%9A%E8%AF%AD%E8%A8%80%E7%95%8C%E9%9D%A2%2C%E9%BB%98%E8%AE%A4%E8%8A%82%E7%9C%81%20token%2CMIT%20%E8%AE%B8%E5%8F%AF%E3%80%82&amp;url=https%3A%2F%2Fwebbrain.one%2Fzh%2F" target="_blank" rel="noopener" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644z"/></svg>
+        分享到 X
+      </a>
+      <a href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fwebbrain.one%2Fzh%2F" target="_blank" rel="noopener" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden="true"><path d="M20.45 20.45h-3.555v-5.569c0-1.328-.024-3.038-1.852-3.038-1.853 0-2.136 1.447-2.136 2.94v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.268 2.37 4.268 5.455v6.284zM5.34 7.433a2.062 2.062 0 11.001-4.124 2.062 2.062 0 010 4.124zM7.119 20.45H3.555V9h3.564v11.45zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        分享到 LinkedIn
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="safety-note" id="safety">
+    <h4>重要安全提示</h4>
+    <ul>
+      <li>WebBrain 的执行模式可以代表你进行真实操作。在继续之前,由你负责检查提示词、目标页面和结果。</li>
+      <li>WebBrain 可能会为了规划而截图。除非你接受风险,否则请避免在敏感页面上使用代理模式(例如健康、金融、约会或私人账户门户)。</li>
+      <li>网页内容可能包含旨在操纵 AI 行为的恶意提示注入。请始终审查建议的操作,并停止看起来异常的运行。</li>
+    </ul>
+  </div>
+  <div class="footer-inner">
+    <span>© 2026 WebBrain。由 <a href="https://emresokullu.com" target="_blank">Emre Sokullu</a> 构建。</span>
+    <div class="footer-links">
+      <a href="https://x.com/intent/post?text=WebBrain%20%E2%80%94%20Chrome%20%E5%92%8C%20Firefox%20%E4%B8%8A%E5%85%8D%E8%B4%B9%E7%9A%84%E5%BC%80%E6%BA%90%20AI%20%E6%B5%8F%E8%A7%88%E5%99%A8%E4%BB%A3%E7%90%86%E3%80%82%E5%A4%9A%E8%AF%AD%E8%A8%80%E7%95%8C%E9%9D%A2%2C%E9%BB%98%E8%AE%A4%E8%8A%82%E7%9C%81%20token%2CMIT%20%E8%AE%B8%E5%8F%AF%E3%80%82&amp;url=https%3A%2F%2Fwebbrain.one%2Fzh%2F" target="_blank" rel="noopener" aria-label="分享到 X" title="分享到 X" class="footer-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644z"/></svg>
+      </a>
+      <a href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fwebbrain.one%2Fzh%2F" target="_blank" rel="noopener" aria-label="分享到 LinkedIn" title="分享到 LinkedIn" class="footer-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M20.45 20.45h-3.555v-5.569c0-1.328-.024-3.038-1.852-3.038-1.853 0-2.136 1.447-2.136 2.94v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.268 2.37 4.268 5.455v6.284zM5.34 7.433a2.062 2.062 0 11.001-4.124 2.062 2.062 0 010 4.124zM7.119 20.45H3.555V9h3.564v11.45zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+      </a>
+      <a href="/blog">博客</a>
+      <a href="#safety">安全提示</a>
+      <a href="/privacy">隐私政策</a>
+      <a href="https://github.com/webbrain-one/webbrain/issues" target="_blank" rel="noopener">报告 Bug</a>
+      <a href="https://github.com/webbrain-one/webbrain/blob/main/LICENSE" target="_blank" rel="noopener">MIT 许可</a>
+      <a href="https://pressreleases.online/org/webbrain.one" target="_blank" rel="noopener">新闻稿</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    // Pick the right source (desktop vs mobile) for every responsive video
+    // on the page - the product demo and the security explainer.
+    const videos = Array.prototype.slice.call(
+      document.querySelectorAll('video[data-desktop-src]')
+    );
+    if (!videos.length) return;
+
+    const mobileQuery = window.matchMedia('(max-width: 768px)');
+
+    function syncVideoSources(event) {
+      const isMobile = event && typeof event.matches === 'boolean'
+        ? event.matches : mobileQuery.matches;
+      videos.forEach(function (video) {
+        const nextSrc = isMobile ? video.dataset.mobileSrc : video.dataset.desktopSrc;
+        if (nextSrc && video.src !== nextSrc) {
+          video.src = nextSrc;
+        }
+      });
+    }
+
+    syncVideoSources(mobileQuery);
+
+    if (typeof mobileQuery.addEventListener === 'function') {
+      mobileQuery.addEventListener('change', syncVideoSources);
+    } else if (typeof mobileQuery.addListener === 'function') {
+      mobileQuery.addListener(syncVideoSources);
+    }
+  })();
+</script>
+
+<!-- Hero mockup rotation: cross-fade through 4 demo scenes. Click a dot to
+     jump (and freeze the auto-rotate so a hand-picked scene stays put).
+     Auto-rotate pauses on hover and when the tab is hidden. Skipped
+     entirely under prefers-reduced-motion — the first scene just stays. -->
+<script>
+  (function () {
+    const stack = document.getElementById('mockup-stack');
+    if (!stack) return;
+    const scenes = stack.querySelectorAll(':scope > .browser-mockup');
+    const dots = document.querySelectorAll('.scene-nav .scene-dot');
+    if (scenes.length < 2) return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const INTERVAL_MS = 6000;
+    let current = 0;
+    let timer = null;
+    let userLocked = false; // set true once the visitor clicks a dot
+
+    function activate(idx) {
+      idx = ((idx % scenes.length) + scenes.length) % scenes.length;
+      scenes.forEach((s, i) => {
+        const on = i === idx;
+        if (!on) {
+          // Hide inactive scenes from screen readers + keyboard tab order.
+          // (opacity:0 alone leaves their links/buttons in the a11y tree.)
+          s.classList.remove('is-active');
+          s.setAttribute('aria-hidden', 'true');
+          s.setAttribute('inert', '');
+        }
+      });
+      dots.forEach((d, i) => {
+        const on = i === idx;
+        d.classList.toggle('is-active', on);
+        d.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      // Force a reflow so re-applying the .is-active rule restarts the
+      // message fade-up animation cleanly.
+      void scenes[idx].offsetWidth;
+      scenes[idx].classList.add('is-active');
+      scenes[idx].removeAttribute('aria-hidden');
+      scenes[idx].removeAttribute('inert');
+      current = idx;
+    }
+
+    function tick() { activate(current + 1); }
+
+    function start() {
+      if (reduceMotion || userLocked || timer) return;
+      timer = setInterval(tick, INTERVAL_MS);
+    }
+    function stop() {
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    dots.forEach((dot) => {
+      dot.addEventListener('click', function () {
+        const idx = parseInt(dot.dataset.scene, 10);
+        if (Number.isNaN(idx)) return;
+        userLocked = true;
+        stop();
+        activate(idx);
+      });
+    });
+
+    stack.addEventListener('mouseenter', stop);
+    stack.addEventListener('mouseleave', start);
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) stop(); else start();
+    });
+
+    start();
+  })();
+</script>
+
+<!-- Provider constellation: light up each node's connection line on
+     hover/focus so the relationship to the central WebBrain core is
+     visible at a glance. CSS-only would mean a separate selector for
+     every node — this is shorter and keeps the SVG data-driven. -->
+<script>
+  (function () {
+    const lines = document.querySelectorAll('.constellation-lines line');
+    const nodes = document.querySelectorAll('.provider-node[data-line]');
+    if (!lines.length || !nodes.length) return;
+    nodes.forEach(function (node) {
+      const idx = parseInt(node.dataset.line, 10);
+      const line = lines[idx];
+      if (!line) return;
+      const on = function () { line.classList.add('is-active'); };
+      const off = function () { line.classList.remove('is-active'); };
+      node.addEventListener('mouseenter', on);
+      node.addEventListener('mouseleave', off);
+      node.addEventListener('focus', on);
+      node.addEventListener('blur', off);
+    });
+  })();
+</script>
+
+<!-- Theme toggle handler — flips data-theme on <html> and persists the
+     choice in localStorage. Also reacts to OS-level theme changes if the
+     user hasn't made an explicit choice yet, so the page stays in sync
+     when they flip system settings. -->
+<script>
+  (function () {
+    const btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    const root = document.documentElement;
+
+    function setTheme(theme, persist) {
+      root.setAttribute('data-theme', theme);
+      if (persist) {
+        try { localStorage.setItem('webbrain-theme', theme); } catch (_) {}
+      }
+    }
+
+    btn.addEventListener('click', function () {
+      const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      setTheme(next, true);
+    });
+
+    // Track OS theme changes — but only honor them when the user hasn't
+    // picked a theme manually (localStorage empty).
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    function onMQ(e) {
+      try {
+        if (localStorage.getItem('webbrain-theme')) return;
+      } catch (_) { /* fall through and apply OS pref */ }
+      setTheme(e.matches ? 'light' : 'dark', false);
+    }
+    if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onMQ);
+    else if (typeof mq.addListener === 'function') mq.addListener(onMQ);
+  })();
+</script>
+
+<!-- GitHub stars pill — fetches count from the public unauthenticated
+     /repos endpoint, caches it in localStorage for 6h to keep visitors well
+     under GitHub's 60-req/hour anonymous limit and to render the cached
+     value instantly on revisit. Page works fine if the request fails. -->
+<script>
+  (function () {
+    const el = document.getElementById('gh-stars');
+    if (!el) return;
+    const countEl = el.querySelector('.gh-count');
+    const REPO = 'webbrain-one/webbrain';
+    const CACHE_KEY = 'gh-stars:' + REPO;
+    const TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+    function fmt(n) {
+      if (n == null || isNaN(n)) return '—';
+      if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k';
+      return String(n);
+    }
+    function render(n) {
+      countEl.textContent = fmt(n);
+      el.removeAttribute('data-loading');
+    }
+
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      if (cached && typeof cached.count === 'number') {
+        render(cached.count);
+        if (Date.now() - cached.ts < TTL_MS) return; // still fresh
+      }
+    } catch (_) { /* ignore corrupt cache */ }
+
+    fetch('https://api.github.com/repos/' + REPO, { headers: { Accept: 'application/vnd.github+json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || typeof data.stargazers_count !== 'number') return;
+        render(data.stargazers_count);
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ count: data.stargazers_count, ts: Date.now() }));
+        } catch (_) { /* storage full or disabled */ }
+      })
+      .catch(function () { /* offline / blocked — leave whatever we had */ });
+  })();
+</script>
+
+<!-- Path-preserving language dropdown. Strips any leading locale segment
+     from the current path, then prepends the new one so /es/foo → /fr/foo
+     instead of collapsing to the locale homepage. -->
+<script>
+  (function () {
+    const LOCALES = ['en', 'es', 'fr', 'tr', 'zh', 'ru', 'uk', 'ar', 'ja', 'ko', 'id', 'th', 'ms', 'tl'];
+    const sel = document.getElementById('lang-dropdown');
+    if (!sel) return;
+    const current = sel.dataset.current || 'en';
+    // Show a "switch to" hint as the visible default — Chinese on the English
+    // page, English everywhere else. When the dropdown opens we swap the value
+    // back to the page's real locale so the highlight is correct and any pick
+    // (including the previously-shown hint) fires `change`.
+    const suggested = current === 'en' ? 'zh' : 'en';
+    sel.value = suggested;
+    sel.addEventListener('focus', function () {
+      if (sel.value !== current) sel.value = current;
+    });
+    sel.addEventListener('blur', function () {
+      if (sel.value === current) sel.value = suggested;
+    });
+    sel.addEventListener('change', function () {
+      const target = sel.value;
+      if (!LOCALES.includes(target)) return;
+      if (target === current) return;
+      const { pathname, search, hash } = window.location;
+      const parts = pathname.split('/').filter(Boolean);
+      if (parts.length && LOCALES.includes(parts[0])) {
+        parts.shift(); // drop leading locale
+      }
+      const rest = parts.length ? '/' + parts.join('/') : '/';
+      const next = target === 'en' ? rest : '/' + target + rest;
+      window.location.href = next + search + hash;
+    });
+  })();
+</script>
+
+</body>
+</html>

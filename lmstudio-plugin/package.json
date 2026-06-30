@@ -1,0 +1,46 @@
+{
+  "name": "@webbrain/lmstudio-web-tools",
+  "displayName": "WebBrain Web Tools",
+  "description": "Web fetching + research tools for LM Studio. Adds fetch_url (raw HTTP, content-type aware) and research_url (extracts the readable article body) to any chat. Pure Node — no browser dependency. Ports the same network-tools the WebBrain Chrome/Firefox extension uses.",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "homepage": "https://webbrain.one",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webbrain-one/webbrain.git",
+    "directory": "lmstudio-plugin"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "lmstudio",
+    "lmstudio-plugin",
+    "tools-provider",
+    "web",
+    "fetch",
+    "research",
+    "browser-tools",
+    "webbrain"
+  ],
+  "dependencies": {
+    "@lmstudio/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^20.11.0"
+  },
+  "files": [
+    "dist",
+    "manifest.json",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
