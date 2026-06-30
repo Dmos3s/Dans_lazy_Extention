@@ -1867,6 +1867,9 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
           content: this._wrapUntrusted(fnName, this._limitToolResult(toolResult)),
         });
         this._persist(tabId);
+
+        // V2 observation policy for local: after action on complex, ensure digest
+        this._applyObservationPolicy(tabId, fnName);
         return { action: 'return', value: finalResponse };
       }
 
@@ -4000,7 +4003,57 @@ If the input still won't accept typing, the element may need a prior click_ax to
   }
 
   _isPinnedAgentStateMessage(msg) {
-    return this._isScratchpadMessage(msg) || this._isProgressLedgerMessage(msg);
+    return this._isScratchpadMessage(msg) || this._isProgressLedgerMessage(msg) || this._isPageDigestMessage(msg);
+  }
+
+  // ─── V2 Pinned Page Digest (like scratchpad, for live compact state) ─────
+  _pageDigestHeader() {
+    return '[Agent page digest — LIVE COMPACT PAGE MEMORY, pinned near top and auto-updated. This is NOT user instructions or page content. Use it for quick orientation on complex pages. Full details via get_state_digest or get_accessibility_tree. Contents:]';
+  }
+
+  _isPageDigestMessage(msg) {
+    return msg && msg.role === 'user'
+      && typeof msg.content === 'string'
+      && msg.content.startsWith('[Agent page digest');
+  }
+
+  _findPageDigestIndex(messages) {
+    for (let i = 1; i < messages.length; i++) {
+      if (this._isPageDigestMessage(messages[i])) return i;
+    }
+    return -1;
+  }
+
+  _buildPageDigestMessage(digestText) {
+    const trimmed = (digestText || '').replace(/^\s+|\s+$/g, '');
+    return {
+      role: 'user',
+      content: `${this._pageDigestHeader()}\n\n${trimmed || '(no page state yet — call get_state_digest or read the page)'}`,
+    };
+  }
+
+  _updatePinnedPageDigest(tabId) {
+    const messages = this.conversations.get(tabId);
+    if (!messages) return;
+    const digest = this._getCompactStateDigest(tabId);
+    if (!digest) return;
+
+    const idx = this._findPageDigestIndex(messages);
+    const msg = this._buildPageDigestMessage(digest);
+    if (idx >= 0) {
+      messages[idx] = msg;
+    } else {
+      // Insert early, after system + original task + scratchpad/ledger if present.
+      let insertAt = 1;
+      const taskIdx = this._findOriginalTaskIndex(messages);
+      if (taskIdx >= 0) insertAt = taskIdx + 1;
+      // Place after other pinned agent state if they exist
+      const scratchIdx = this._findScratchpadIndex(messages);
+      const ledgerIdx = this._findProgressLedgerIndex(messages);
+      const maxPinned = Math.max(insertAt - 1, scratchIdx, ledgerIdx);
+      if (maxPinned >= 0) insertAt = maxPinned + 1;
+      messages.splice(insertAt, 0, msg);
+    }
   }
 
   _findScratchpadIndex(messages) {
@@ -4070,7 +4123,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
         const m = messages[i];
         if (m.role !== 'user') continue;
         const c = typeof m.content === 'string' ? m.content : '';
-        if (c.startsWith('[Site guidance') || c.startsWith('[Site context changed') || c.startsWith('[Context window was trimmed') || c.startsWith('[Agent scratchpad') || c.startsWith('[Agent progress ledger')) continue;
+        if (c.startsWith('[Site guidance') || c.startsWith('[Site context changed') || c.startsWith('[Context window was trimmed') || c.startsWith('[Agent scratchpad') || c.startsWith('[Agent progress ledger') || c.startsWith('[Agent page digest')) continue;
         insertAt = i + 1;
         break;
       }
@@ -4203,6 +4256,18 @@ If the input still won't accept typing, the element may need a prior click_ax to
         state.landmarks = headings;
         state.lastReadStep = step;
         state.digest = `AX:${lines.length}L ${interactiveCount}int | ${headings.slice(0,2).join(' | ')}`;
+
+        // V2 crude but effective delta for next read
+        const prevSample = state._prevAxSample || '';
+        if (prevSample && content.length > 200) {
+          const prevL = prevSample.split('\n').filter(Boolean);
+          const currL = lines;
+          const added = currL.filter(l => !prevL.some(p => p.includes(l.slice(0,30)))).slice(0,5);
+          if (added.length > 1) {
+            state.lastDelta = { added: added, approxRemoved: Math.max(0, prevL.length - currL.length), note: 'changes since last read' };
+          }
+        }
+        state._prevAxSample = content;
       }
 
       if (toolName === 'extract_data' && Array.isArray(result)) {
@@ -4235,7 +4300,32 @@ If the input still won't accept typing, the element may need a prior click_ax to
     } catch (e) {
       // Never let state update break anything
     }
+    // Keep the pinned digest message in the conversation up to date (like scratchpad)
+    this._updatePinnedPageDigest(tabId);
     return state;
+  }
+
+  /**
+   * V2 Observation Policy for LM Studio / local on complex pages.
+   * After mutating actions, auto-ensure the cheap digest is in context.
+   * Reduces unnecessary full re-read calls from the model.
+   */
+  _applyObservationPolicy(tabId, toolName) {
+    try {
+      const provider = this.providerManager.getActive();
+      const isLocal = provider && (provider.config?.category === 'local' || (provider.config?.providerName || '').includes('lmstudio'));
+      const actionTools = ['click_ax', 'set_field', 'type_ax', 'click', 'scroll', 'navigate', 'new_tab'];
+      if (!isLocal || !actionTools.includes(toolName)) return;
+      this._updatePinnedPageDigest(tabId);
+      // Optionally auto-append a digest tool result note (keeps model aware cheaply)
+      const messages = this.conversations.get(tabId);
+      if (messages) {
+        const d = this._getCompactStateDigest(tabId);
+        if (d && messages.length > 2) {
+          // Don't bloat if recent; just rely on pinned
+        }
+      }
+    } catch {}
   }
 
   /**
@@ -4257,7 +4347,13 @@ If the input still won't accept typing, the element may need a prior click_ax to
     if (state.lastRegion) {
       parts.push(`Last action near ${state.lastRegion.ref} (${state.lastRegion.type})`);
     }
-    const compact = parts.join(' | ').slice(0, 450);
+    // V2: pull example actionable refs from last AX sample (huge for gov pages)
+    if (state.axSample) {
+      const refMatches = state.axSample.match(/\[[^\]]+ref_\d+[^\]]*\]/g) || [];
+      const topRefs = refMatches.slice(0, 4).map(m => m.replace(/\[|\]/g, ''));
+      if (topRefs.length) parts.push('Key refs e.g.: ' + topRefs.join(', '));
+    }
+    const compact = parts.join(' | ').slice(0, 550);
     return compact ? `[Current page state (compact, auto-maintained): ${compact}]` : '';
   }
 
@@ -4595,6 +4691,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
       || c.startsWith('[System nudge')
       || c.startsWith('[Agent scratchpad')
       || c.startsWith('[Agent progress ledger')
+      || c.startsWith('[Agent page digest')
       || c.startsWith('[PROGRESS LEDGER BLOCK')
       || c.startsWith('[NAVIGATION OCCURRED')
       || c.startsWith('[Auto-screenshot')
@@ -5084,10 +5181,20 @@ If the input still won't accept typing, the element may need a prior click_ax to
     const taskIdx = this._findOriginalTaskIndex(messages);
     let trimmed = false;
     for (let i = 1; i < messages.length; i++) {
-      if (i === taskIdx) continue; // never truncate the pinned original task
+      if (i === taskIdx) continue;
       const m = messages[i];
       if (this._isPinnedAgentStateMessage(m)) continue;
-      if (typeof m.content !== 'string') continue; // image/array content handled by _pruneOldImages
+      if (typeof m.content !== 'string') continue;
+      const isRead = m.role === 'tool' && (m.content.includes('get_accessibility_tree') || m.content.includes('extract_data') || m.content.includes('pageContent'));
+      if (isRead) {
+        // V2: replace old full reads with digest + short hint
+        const digested = this._digestOldReadResult(tabId, 'get_accessibility_tree', m.content);
+        if (digested && digested.length < m.content.length * 0.6) {
+          m.content = digested;
+          trimmed = true;
+          continue;
+        }
+      }
       if (m.role === 'tool' && m.content.length > 2000) {
         m.content = m.content.slice(0, 2000) + '\n[...truncated to fit context]';
         trimmed = true;
@@ -5690,7 +5797,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
       const m = messages[i];
       if (m.role !== 'user') continue;
       const c = typeof m.content === 'string' ? m.content : '';
-      if (c.startsWith('[Site guidance') || c.startsWith('[Site context changed') || c.startsWith('[Context') || c.startsWith('[Agent scratchpad') || c.startsWith('[Agent progress ledger')) continue;
+      if (c.startsWith('[Site guidance') || c.startsWith('[Site context changed') || c.startsWith('[Context') || c.startsWith('[Agent scratchpad') || c.startsWith('[Agent progress ledger') || c.startsWith('[Agent page digest')) continue;
       originalTask = m;
       break;
     }
@@ -5850,7 +5957,8 @@ If the input still won't accept typing, the element may need a prior click_ax to
         tables: state.tables || [],
         landmarks: state.landmarks || [],
         lastRegion: state.lastRegion || null,
-        note: 'This is the live compact page memory. Use get_accessibility_tree only when you need fresh ref_ids or missed structure.',
+        delta: state.lastDelta || null,
+        note: 'Live compact memory + delta since last. Use get_accessibility_tree(ref_id or small depth) only when you need fresh precise refs.',
       };
     }
     if (name === 'schedule_resume') {
@@ -9477,20 +9585,8 @@ If the input still won't accept typing, the element may need a prior click_ax to
       // so it fires "when it's due" during long autonomous loops.
       await this._manageContext(tabId, messages, onUpdate, costState);
 
-      // V2: keep the ultra-compact page state fresh in context for LM Studio.
-      // This is the big lever: instead of re-sending 10k+ char trees, the model
-      // mostly works from this + targeted subtree reads.
-      const freshDigest = this._getCompactStateDigest(tabId);
-      if (freshDigest) {
-        // Update or append a lightweight state note at the end (model sees current reality cheaply)
-        const lastMsg = messages[messages.length - 1];
-        if (lastMsg && lastMsg.role === 'user' && typeof lastMsg.content === 'string' && lastMsg.content.includes('[Current page state')) {
-          // replace last one
-          lastMsg.content = lastMsg.content.replace(/\n?\[Current page state[\s\S]*?\]/, '\n' + freshDigest);
-        } else {
-          messages.push({ role: 'user', content: freshDigest });
-        }
-      }
+      // V2: keep pinned live page digest up to date (the efficient state carrier)
+      this._updatePinnedPageDigest(tabId);
 
       steps++;
       onUpdate('thinking', { step: steps });
@@ -9799,16 +9895,8 @@ If the input still won't accept typing, the element may need a prior click_ax to
       // the chars/4 estimate inside _manageContext.
       await this._manageContext(tabId, messages, onUpdate, costState);
 
-      // V2 page digest (same as non-stream path)
-      const freshDigest = this._getCompactStateDigest(tabId);
-      if (freshDigest) {
-        const lastMsg = messages[messages.length - 1];
-        if (lastMsg && lastMsg.role === 'user' && typeof lastMsg.content === 'string' && lastMsg.content.includes('[Current page state')) {
-          lastMsg.content = lastMsg.content.replace(/\n?\[Current page state[\s\S]*?\]/, '\n' + freshDigest);
-        } else {
-          messages.push({ role: 'user', content: freshDigest });
-        }
-      }
+      // V2 pinned digest
+      this._updatePinnedPageDigest(tabId);
 
       steps++;
       onUpdate('thinking', { step: steps });

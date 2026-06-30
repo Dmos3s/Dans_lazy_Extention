@@ -318,14 +318,15 @@
     const role = getRole(el);
 
     if (opts.filter === 'visible') {
-      // Tight mode for agent consumption: only keep nodes the model can
-      // actually ACT on or needs as structural context. Plain spans/divs
-      // with an accessible name were the main bloat source on complex
-      // apps (Stripe, Notion, etc.) and are almost never the right click
-      // target — the interactive ancestor is.
+      // V2: importance scoring for dense gov / data pages (tables, repeated lists).
+      // Drop low-value nodes aggressively while keeping ref stability for keepers.
+      const score = getImportanceScore(el, opts);
+      if (score >= 4) return true;  // interactive + headings + data will pass
       if (isInteractive(el)) return true;
       if (/^h[1-6]$/.test(el.tagName.toLowerCase())) return true;
       if (USEFUL_NON_INTERACTIVE_ROLES.has(role)) return true;
+      // For very dense pages (many nodes), raise bar
+      if ((opts.maxDepth || 15) <= 8 && score < 2) return false;
       return false;
     }
 
@@ -334,6 +335,24 @@
     if (isLandmark(el)) return true;
     if (getAccessibleName(el).length > 0) return true;
     return role !== null && role !== 'generic' && role !== 'image';
+  }
+
+  // V2 importance scoring (higher = keep). Used for pruning on complex pages.
+  function getImportanceScore(el, opts) {
+    let s = 0;
+    if (isInteractive(el)) s += 12;
+    const role = getRole(el);
+    if (['heading', 'main', 'navigation', 'form', 'table', 'row', 'cell'].includes(role)) s += 6;
+    if (/^h[1-6]$/.test(el.tagName.toLowerCase())) s += 5;
+    const name = getAccessibleName(el);
+    if (name.length > 2) s += 3;
+    if (name.length > 20) s += 2; // more specific content
+    // Bonus for data-like (numbers, dates, codes common on gov)
+    if (/\d{2,}/.test(name) || /\$|%|date|id|no\.|ref/i.test(name)) s += 4;
+    // Penalty for very deep generic containers
+    const depth = opts.currentDepth || 0;
+    if (depth > 10 && !isInteractive(el)) s -= 3;
+    return Math.max(0, s);
   }
 
   // ── Ref_id management ───────────────────────────────────────────────────
@@ -441,6 +460,7 @@
     if (el.children && depth < opts.maxDepth) {
       const nextDepth = included ? depth + 1 : depth;
       for (const child of el.children) {
+        opts.currentDepth = nextDepth;
         walk(child, nextDepth, opts, lines);
       }
     }
@@ -706,6 +726,7 @@
             opts._skipPrioritySet = priority.set;
           }
         }
+        opts.currentDepth = 0;
         walk(document.body, 0, opts, lines);
       }
 

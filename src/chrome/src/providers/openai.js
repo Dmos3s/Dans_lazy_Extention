@@ -181,8 +181,15 @@ export class OpenAICompatibleProvider extends BaseLLMProvider {
     // page structure on gov/data sites). LM Studio in particular often uses a
     // backend that respects this.
     const pName = (this.config.providerName || '').toLowerCase();
-    if (pName === 'lmstudio' || pName === 'ollama' || this.config.category === 'local') {
+    const isLm = pName === 'lmstudio' || this.config.category === 'local';
+    if (isLm) {
       if (body.cache_prompt == null) body.cache_prompt = true;
+    }
+
+    // V2 JSON mode for LM Studio: encourages reliable tool call formatting
+    // and reduces bad-output retries (slow on local).
+    if (isLm && (options.tools && options.tools.length > 0 || true)) {
+      try { if (!body.response_format) body.response_format = { type: 'json_object' }; } catch {}
     }
 
     const url = `${this.baseUrl}/chat/completions`;
@@ -239,8 +246,14 @@ export class OpenAICompatibleProvider extends BaseLLMProvider {
 
     // Local cache hint (same as non-stream)
     const pName2 = (this.config.providerName || '').toLowerCase();
-    if (pName2 === 'lmstudio' || pName2 === 'ollama' || this.config.category === 'local') {
+    const isLm2 = pName2 === 'lmstudio' || this.config.category === 'local';
+    if (isLm2) {
       if (body.cache_prompt == null) body.cache_prompt = true;
+    }
+
+    // V2 JSON mode also for stream
+    if (isLm2 && options.tools && options.tools.length > 0) {
+      try { if (!body.response_format) body.response_format = { type: 'json_object' }; } catch {}
     }
 
     this._addStreamUsageOptions(body);

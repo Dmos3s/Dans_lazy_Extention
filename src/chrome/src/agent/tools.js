@@ -1208,13 +1208,12 @@ ACCESSIBILITY TREE — read this carefully:
     page: when visible/interactive output is truncated, read the next chunk with page: nextPage before scrolling
     ref_id: re-read just the subtree under a previously-seen ref_id (useful for zooming into a form or nav)
 - \`ref_id\`s are STABLE across calls. A ref_id you saw last turn still points to the same element as long as it's still in the DOM. If you get a "not found" error, the element was removed or the page navigated — re-read the tree.
-- DEFAULT ACT LOOP:
-    1. \`get_accessibility_tree({filter: "visible"})\` — see what's on screen.
-    2. If the tree is truncated and you cannot find a visible target, call \`get_accessibility_tree({filter: "visible", page: nextPage})\` before scrolling.
-    3. Identify the ref_ids you need for the next step.
-    4. \`click_ax({ref_id: "ref_N"})\` or \`type_ax({ref_id: "ref_N", text: "..."})\`.
-    5. Re-read the tree (or take a screenshot) to verify the page changed.
-    6. Repeat.
+- V2 EFFICIENT LOOP for complex/gov pages (use get_state_digest heavily):
+    1. \`get_state_digest\` — get cheap live memory (tables, refs, last action).
+    2. Only when you need new precise refs: \`get_accessibility_tree({filter:"visible", maxDepth:6-8, ref_id?...})\`.
+    3. Act using refs from digest or tree.
+    4. Verify with get_state_digest or small subtree read.
+    5. Repeat. This saves huge tokens on LM Studio for dense pages.
 - Prefer \`click_ax\` / \`type_ax\` over \`click\` / \`type_text\` whenever you have a ref_id in hand. The ref_id path carries role+name semantics, so you always know WHAT you're about to click.
 - Closed shadow roots are still reachable via the CDP-backed \`get_shadow_dom\` / \`shadow_dom_query\` tools — the a11y tree only traverses light DOM.
 - SHADOW DOM FALLBACK: If the accessibility tree is missing expected form fields or buttons (common on Stripe, Salesforce, Shopify, and other Web Component-heavy pages), the page likely uses shadow DOM. Try \`get_interactive_elements\` which pierces open shadow roots, or \`get_shadow_dom\` / \`shadow_dom_query\` for targeted reads. Do not keep re-reading the tree — those elements will never appear in it.
