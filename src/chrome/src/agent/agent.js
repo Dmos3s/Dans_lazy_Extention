@@ -990,28 +990,38 @@ export class Agent {
   }
 
   /**
-   * Coordinate-click loop detector. Buckets to nearest 5px so a click that
-   * drifts by a pixel or two between attempts still hashes the same. Window
-   * of 8 — generous, since the goal is to survive interleaved noise like
-   * execute_js / type_text / read_page calls between coord retries.
+   * Coordinate-click loop detector (Chrome).
+   * Tracks raw (x,y) clicks and counts how many recent ones are "near" the current one.
+   * Uses a distance radius (not strict 5px bucketing) so small variations in the
+   * numbers the model reads from screenshots (348 vs 352 etc.) still count as
+   * repeated attempts on the same spot.
    *
-   * Returns 'nudge' on the 3rd repeat and 'stop' on the 5th. Gives the
-   * agent more room to retry on pages with loading states or animations.
+   * This prevents the exact failure mode the user saw: 23 clicks around the
+   * same area with no progress because each (x,y) was slightly different and
+   * escaped the old 5px bucket.
    */
   _checkCoordClickLoop(tabId, x, y) {
-    const bx = Math.round(x / 5) * 5;
-    const by = Math.round(y / 5) * 5;
-    const key = `${bx},${by}`;
-    const buf = this.recentCoordClicks.get(tabId) || [];
-    buf.push({ key, ts: Date.now() });
-    if (buf.length > 12) buf.shift();
+    const now = Date.now();
+    let buf = this.recentCoordClicks.get(tabId) || [];
+    buf.push({ x: Number(x), y: Number(y), ts: now });
+
+    // Keep only recent entries (last ~90s or last 15 attempts)
+    buf = buf.filter(e => (now - e.ts) < 90000);
+    if (buf.length > 15) buf = buf.slice(-15);
     this.recentCoordClicks.set(tabId, buf);
 
-    const counts = new Map();
-    for (const e of buf) counts.set(e.key, (counts.get(e.key) || 0) + 1);
-    const n = counts.get(key) || 0;
-    if (n >= 8) return { kind: 'stop', x: bx, y: by };
-    if (n >= 5) return { kind: 'nudge', x: bx, y: by };
+    const CLOSE_PX = 28; // pixels — "same general area" even if model varies coords a bit
+    let closeCount = 0;
+    for (const e of buf) {
+      const dx = e.x - x;
+      const dy = e.y - y;
+      if (Math.hypot(dx, dy) < CLOSE_PX) closeCount++;
+    }
+
+    // Lowered thresholds: stop wasting steps earlier on blind pixel clicking.
+    // Nudge after a few, hard stop after ~6 repeated area attempts.
+    if (closeCount >= 6) return { kind: 'stop', x, y };
+    if (closeCount >= 3) return { kind: 'nudge', x, y };
     return { kind: 'none' };
   }
 
@@ -1873,14 +1883,19 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
           // bucket — for fractional inputs like (0.911, 0.331) the bucket
           // rounds to (0, 0) and the message reads as if we'd clicked the
           // top-left corner, hiding what really happened.
-          stopMessage = `Stopped: I clicked at (or near) coordinates (${fnArgs.x}, ${fnArgs.y}) multiple times and the page never responded. That position is hitting empty space, an overlay, or the wrong element. Please give a different instruction or check the page yourself.`;
+          stopMessage = `Stopped after many coordinate clicks at or near (${fnArgs.x}, ${fnArgs.y}) with no page response. You are in a pixel-click loop. Next time: use get_accessibility_tree + click_ax / set_field / click({text:"..."}) instead of guessing (x,y) from screenshots. Check the page yourself or give a more specific instruction (e.g. "click the search box then type...").`;
         } else {
           stopMessage = loopCheck.message;
         }
       } else if (loopCheck.kind === 'nudge' || coordCheck.kind === 'nudge') {
         effectiveKind = 'nudge';
         if (coordCheck.kind === 'nudge') {
-          nudgeWarning = `[COORDINATE CLICK WARNING: You've clicked at or near (${fnArgs.x}, ${fnArgs.y}) several times with no visible page change. The click may be missing its target. Try: (a) call get_interactive_elements to find a real selector, (b) click({text: "..."}) to target by visible text, or (c) take a fresh screenshot and look more carefully at element positions. Try a different approach before clicking these coordinates again.]`;
+          nudgeWarning = `[COORDINATE CLICK LOOP — STOP RETRYING PIXELS: You have clicked at or near (${fnArgs.x}, ${fnArgs.y}) multiple times with no effect. This is almost always because the (x,y) from the screenshot missed the actual element (overlay, padding, wrong layer, or needs focus first).
+DO THIS INSTEAD, RIGHT NOW:
+1. Call get_accessibility_tree({filter:"interactive"}) or get_interactive_elements.
+2. Use click_ax({ref_id: "ref_XXX"}) or set_field({ref_id, text: "..."}) or click({text: "exact visible label"}).
+3. NEVER guess more coordinates. Pixel clicking is the last resort and you are already stuck in it.
+If the input still won't accept typing, the element may need a prior click_ax to focus it — then immediately follow with the type tool on the SAME ref_id.`;
         } else {
           nudgeWarning = loopCheck.warning;
         }
