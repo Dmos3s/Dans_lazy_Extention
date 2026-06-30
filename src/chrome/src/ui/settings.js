@@ -6,9 +6,11 @@ import { t, getLocale, setLocale, LANGUAGES } from './i18n.js';
 import { THEME_MODES, applyMode, loadMode, watch } from './theme.js';
 import { CAPABILITY_LABEL } from '../agent/permission-gate.js';
 
-// Version shown in the subtitle. Kept here so it only needs one update per
-// release; the subtitle string itself is translated.
-const EXT_VERSION = '18.3.5';
+// Version shown in the subtitle. Pulled from the manifest at runtime so it
+// stays in sync after version bumps (no manual edit needed here).
+const EXT_VERSION = (typeof chrome !== 'undefined' && chrome.runtime?.getManifest)
+  ? chrome.runtime.getManifest().version
+  : '18.3.5';
 
 const providersContainer = document.getElementById('providers');
 const displaySettings = document.getElementById('display-settings');
@@ -258,10 +260,18 @@ const expandedProviders = new Set(); // ids the user explicitly expanded this se
 // --- Init ---
 
 async function init() {
-  // Migration: the old auth.webbrain.one sign-in stored a bearer token and
-  // account info here. Billing is now device-GUID based and there is no sign-in
-  // UI, so purge any stale credentials left over from that flow.
-  chrome.storage.local.remove(['authToken', 'authEmail', 'authDefaultModel']).catch(() => {});
+  // Migration / hardening for legacy WebBrain Cloud auth (TODO #7).
+  // Old flow used window.postMessage with WB_AUTH_TOKEN from auth.webbrain.one.
+  // Current billing is device-GUID based; we defensively purge and never blindly
+  // trust cross-origin messages for tokens.
+  const legacyKeys = ['authToken', 'authEmail', 'authDefaultModel', 'WB_AUTH_TOKEN'];
+  chrome.storage.local.remove(legacyKeys).catch(() => {});
+
+  // If any future message-based auth re-appears, we would validate here:
+  // - event.origin === 'https://auth.webbrain.one'
+  // - validate payload shape (non-empty token string, optional email/model)
+  // - match against an opened window/tab for extra safety
+  // For now the legacy purge + device-GUID flow is the active path.
 
   // Load display settings
   const stored = await chrome.storage.local.get(['verboseMode', 'screenshotFallback', 'maxAgentSteps', 'autoScreenshot', 'useSiteAdapters', 'apiMutationObserverEnabled', 'planBeforeActMode', 'planBeforeAct', 'notifySound', 'completionConfetti', 'tracingEnabled', 'strictSecretMode', 'agentAllowLocalNetwork', 'scheduledTasksEnabled', 'scheduledRequireConsequentialConfirmation', 'providerFilter', 'requestTimeoutMs', 'costAllowanceSessionUsd', 'costAllowanceTotalUsd', 'cloudCostSpentUsd']);

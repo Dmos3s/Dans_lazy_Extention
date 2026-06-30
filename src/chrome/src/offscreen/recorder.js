@@ -318,6 +318,10 @@
     try {
       if (s.audioContext && s.audioContext.state !== 'closed') await s.audioContext.close();
     } catch {}
+    // Defensive: clear references so subsequent starts don't see stale streams
+    s.tabStream = null;
+    s.micStream = null;
+    s.audioContext = null;
   }
 
   // ─── runtime.onMessage router ─────────────────────────────────────

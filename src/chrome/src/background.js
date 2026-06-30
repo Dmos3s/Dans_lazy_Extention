@@ -262,6 +262,7 @@ async function loadPanelTabs() {
 }
 function savePanelTabs() {
   chrome.storage.session?.set({ [PANEL_TABS_KEY]: Array.from(panelTabs) }).catch(() => {});
+  void chrome.runtime.lastError;
 }
 loadPanelTabs();
 
@@ -508,6 +509,7 @@ function sendAgentRunComplete(tabId) {
     type: 'run_complete',
     data: {},
   }).catch(() => {});
+  void chrome.runtime.lastError; // MV3: always clear after fire-and-forget sendMessage
 }
 
 // Stop button on the page → abort the agent run for that tab. Mirrors
@@ -527,6 +529,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // silently refuses to open the panel.
 chrome.action.onClicked.addListener((tab) => {
   if (!tab?.id) return;
+  // MV3 note: sidePanel.open() must be called synchronously from user gesture.
+  // We never await before it. Service worker may go idle; we rely on sidePanel
+  // + storage.session for most state.
   // Legacy fallback: keep panelTabs in sync for browsers without tabGroups.
   panelTabs.add(tab.id);
   savePanelTabs();

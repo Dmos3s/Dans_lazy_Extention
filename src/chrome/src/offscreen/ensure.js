@@ -61,11 +61,15 @@ export async function ensureOffscreen() {
       });
       ready = true;
     } catch (e) {
+      const msg = String(e?.message || e);
       // Race: another caller created it between hasDocument() and us.
-      if (String(e?.message || e).includes('already exists')) {
+      if (msg.includes('already exists')) {
         ready = true;
         return;
       }
+      // MV3 offscreen is single-use; surface clear error for debugging.
+      console.warn('[WebBrain] offscreen create failed:', msg);
+      ready = false;
       throw e;
     }
   })();

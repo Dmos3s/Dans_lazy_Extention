@@ -1,7 +1,7 @@
 # Dans_lazy_Extention
 
-> Personal copy / fork of WebBrain (https://github.com/webbrain-one/webbrain) — named `Dans_lazy_Extention` on GitHub.  
-> All credit to the original authors. This repo contains the full source for the AI browser agent extension.
+> Personal Chrome-focused copy / fork of WebBrain (https://github.com/webbrain-one/webbrain) — named `Dans_lazy_Extention` on GitHub.  
+> All credit to the original authors. Focused on Chrome (MV3) only; Firefox code left as-is but not used/maintained here.
 
 [![Lang](https://img.shields.io/badge/Lang-English-blue)](README.md)
 [![Lang](https://img.shields.io/badge/Lang-中文-red)](README.zh-CN.md)
@@ -51,7 +51,7 @@ git clone https://github.com/webbrain-one/webbrain.git
 
 1. Open Chrome → `chrome://extensions/`
 2. Enable **Developer mode** (top right)
-3. Click **Load unpacked** → select the `webbrain/src/chrome` folder
+3. Click **Load unpacked** → select the `src/chrome` folder (the one containing manifest.json) inside your clone. (No root-level manifest is used.)
 
 ### Firefox
 

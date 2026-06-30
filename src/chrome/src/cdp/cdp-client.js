@@ -21,7 +21,15 @@ export class CDPClient {
     return new Promise((resolve, reject) => {
       chrome.debugger.attach({ tabId }, '1.3', async () => {
         if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
+          const msg = chrome.runtime.lastError.message || 'unknown error';
+          // Common case: user removed the broad "debugger" permission or it was never granted.
+          const hint = /permission|denied|not allowed/i.test(msg)
+            ? ' (The "debugger" permission is required for reliable Act mode on Chrome. Re-enable the extension or reload it.)'
+            : '';
+          // Clean up any partial state
+          this.sessions.delete(tabId);
+          reject(new Error(msg + hint));
+          void chrome.runtime.lastError; // swallow
           return;
         }
 
@@ -56,8 +64,11 @@ export class CDPClient {
 
     return new Promise((resolve) => {
       chrome.debugger.detach({ tabId }, () => {
+        // Always clean local state even if detach reports an error (e.g. already detached)
         this.sessions.delete(tabId);
         this.eventHandlers.delete(tabId);
+        // Swallow lastError — detach is best-effort in MV3 service worker lifecycle
+        void chrome.runtime.lastError;
         resolve();
       });
     });
@@ -74,7 +85,12 @@ export class CDPClient {
     return new Promise((resolve, reject) => {
       chrome.debugger.sendCommand({ tabId }, method, params, (result, error) => {
         if (error) {
-          reject(new Error(error.message || error));
+          const msg = error.message || String(error);
+          // Common MV3 gotchas: detached during long operation, or tab navigated away
+          const hint = /detached|not attached|tab closed|disconnected/i.test(msg)
+            ? ' (Debugger session may have been lost — try stopping and restarting the agent.)'
+            : '';
+          reject(new Error(msg + hint));
           return;
         }
         resolve(result);

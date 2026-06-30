@@ -1870,7 +1870,7 @@ async function loadProviders() {
       providerSelect.appendChild(opt);
     }
   } catch (e) {
-    console.error('Failed to load providers:', e);
+    console.error('[WebBrain] Failed to load providers:', e);
   }
 }
 
