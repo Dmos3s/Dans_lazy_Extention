@@ -1411,10 +1411,9 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
     }
 
     if (hasPriorUserTurn) {
-      // V2: inject the ultra-compact page state digest for local models
-      const stateDigest = this._getCompactStateDigest(tabId);
-      const enriched = stateDigest ? contextLine + stateDigest + '\n\n' + userMessage : contextLine + userMessage;
-      return { role: 'user', content: enriched };
+      // Rely on the pinned [Agent page digest] message (updated in place) instead of
+      // injecting more text into every user turn. This keeps the prompt cleaner.
+      return { role: 'user', content: contextLine + userMessage };
     }
 
     // Determine vision capability: either a dedicated vision model is
@@ -4035,6 +4034,15 @@ If the input still won't accept typing, the element may need a prior click_ax to
   _updatePinnedPageDigest(tabId) {
     const messages = this.conversations.get(tabId);
     if (!messages) return;
+
+    // Only maintain the pinned digest for local providers (the main target for v2 speed wins).
+    // For strong cloud models the extra pinned message is unnecessary noise.
+    try {
+      const prov = this.providerManager.getActive();
+      const isLocalProvider = prov && (prov.config?.category === 'local' || ['lmstudio','ollama','jan','vllm','sglang'].includes((prov.config?.providerName || '').toLowerCase()));
+      if (!isLocalProvider) return;
+    } catch {}
+
     const digest = this._getCompactStateDigest(tabId);
     if (!digest) return;
 
@@ -4354,7 +4362,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
       if (topRefs.length) parts.push('Key refs e.g.: ' + topRefs.join(', '));
     }
     const compact = parts.join(' | ').slice(0, 550);
-    return compact ? `[Current page state (compact, auto-maintained): ${compact}]` : '';
+    return compact || '';
   }
 
   /**
@@ -9594,7 +9602,9 @@ If the input still won't accept typing, the element may need a prior click_ax to
       let result;
       try {
         const useTools = provider.supportsTools;
-        const chatOpts = { tools: useTools ? tools : undefined, temperature: plannerTemperature, maxTokens: 4096 };
+        const isLocalProv = provider && (provider.config?.category === 'local' || ['lmstudio','ollama','jan','vllm','sglang','llamacpp'].includes(String(provider.config?.providerName || provider.name).toLowerCase()));
+        const maxOut = isLocalProv ? 8192 : 4096;  // give local models more output room to finish reasoning + action
+        const chatOpts = { tools: useTools ? tools : undefined, temperature: plannerTemperature, maxTokens: maxOut };
         const prunedMessages = this._pruneOldImages(messages, provider);
         this._logDebug({ type: 'llm_request', step: steps, provider: provider.constructor.name, messages: prunedMessages, options: chatOpts });
         if (runId) trace.recordLLMRequest(runId, steps, { providerClass: provider.constructor.name, model: provider.model, messageCount: prunedMessages.length, toolsCount: (chatOpts.tools || []).length });
@@ -9906,7 +9916,9 @@ If the input still won't accept typing, the element may need a prior click_ax to
         let toolCallsAccumulator = {};
         let hasToolCalls = false;
 
-        const streamOpts = { tools: provider.supportsTools ? tools : undefined, temperature: plannerTemperature, maxTokens: 4096 };
+        const isLocalProv = provider && (provider.config?.category === 'local' || ['lmstudio','ollama','jan','vllm','sglang','llamacpp'].includes(String(provider.config?.providerName || provider.name).toLowerCase()));
+        const maxOut = isLocalProv ? 8192 : 4096;
+        const streamOpts = { tools: provider.supportsTools ? tools : undefined, temperature: plannerTemperature, maxTokens: maxOut };
         const prunedMessages = this._pruneOldImages(messages, provider);
         this._logDebug({ type: 'llm_stream_request', step: steps, provider: provider.constructor.name, messages: prunedMessages, options: streamOpts });
         const beforeCost = await this._checkCostAllowance(provider, costState);
