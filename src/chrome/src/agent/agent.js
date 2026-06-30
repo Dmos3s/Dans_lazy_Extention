@@ -107,6 +107,14 @@ export class Agent {
     // next step (compact-every-step thrash). A genuine token-budget overflow is
     // never suppressed — see _manageContext.
     this._compactCooldown = new Map();
+
+    // === V2: PageState for LM Studio speed on complex/gov pages ===
+    // Maintains a compact, updatable "working model" of the current page.
+    // This lets us send tiny digests + deltas instead of re-paying full AX trees
+    // every turn. The LLM still has full power via explicit full reads when needed.
+    // Key win: observation economy + stable prefix for local KV cache.
+    this.pageStates = new Map(); // tabId -> { digest: string, tables: array, landmarks: array, lastRegion: object|null, lastReadStep: number, axSample: string }
+
     // Auto-screenshot mode. 'off' | 'navigation' | 'state_change' | 'every_step'.
     // Loaded from chrome.storage.local in background.js.
     this.autoScreenshot = 'state_change';
@@ -1403,7 +1411,10 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
     }
 
     if (hasPriorUserTurn) {
-      return { role: 'user', content: contextLine + userMessage };
+      // V2: inject the ultra-compact page state digest for local models
+      const stateDigest = this._getCompactStateDigest(tabId);
+      const enriched = stateDigest ? contextLine + stateDigest + '\n\n' + userMessage : contextLine + userMessage;
+      return { role: 'user', content: enriched };
     }
 
     // Determine vision capability: either a dedicated vision model is
@@ -3945,6 +3956,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
     this._lastInputTokens.delete(tabId);
     this._lastEstCharsAtReport.delete(tabId);
     this._compactCooldown.delete(tabId);
+    this.pageStates.delete(tabId);
     this.hydratedTabs.delete(tabId);
     this.apiAllowedTabs.delete(tabId);
     this.apiAllowedInjected.delete(tabId);
@@ -4148,6 +4160,122 @@ If the input still won't accept typing, the element may need a prior click_ax to
     } catch { /* best-effort */ }
   }
   // ─────────────────────────────────────────────────────────────────────
+
+  // === V2 SHOOT FOR THE STARS: PageState + Observation Economy ===
+  // For LM Studio on dense government / data-heavy pages, we stop blindly
+  // re-sending giant accessibility trees or raw extracts every turn.
+  // Instead we maintain a compact, living "page consciousness" in the extension.
+  // Benefits:
+  // - Token usage on re-observation drops dramatically (digest + deltas).
+  // - KV cache hits improve on LM Studio because prefixes stay more stable.
+  // - Model still has full power: it can request full reads when the digest is insufficient.
+  // - Updates happen client-side + in agent (free & fast).
+
+  _getPageState(tabId) {
+    if (!this.pageStates.has(tabId)) {
+      this.pageStates.set(tabId, {
+        digest: '',
+        tables: [],
+        landmarks: [],
+        lastRegion: null,
+        lastReadStep: 0,
+        axSample: '',
+        url: '',
+      });
+    }
+    return this.pageStates.get(tabId);
+  }
+
+  /**
+   * Update (or initialize) the compact page state from a read result.
+   * Called after AX, extract_data, etc. This is the heart of v2 efficiency.
+   */
+  _updatePageState(tabId, toolName, result, step = 0) {
+    const state = this._getPageState(tabId);
+    try {
+      if (toolName === 'get_accessibility_tree' || toolName === 'get_interactive_elements') {
+        const content = result.pageContent || result.text || JSON.stringify(result).slice(0, 2000);
+        // Create a very compact digest: first landmarks + size hint + key interactive count
+        const lines = content.split('\n').filter(Boolean);
+        const interactiveCount = lines.filter(l => /button|link|textbox|combobox|checkbox|searchbox/.test(l)).length;
+        const headings = lines.filter(l => /^ {0,2}(heading|banner|navigation|main)/.test(l)).slice(0, 4).map(l => l.trim().slice(0, 60));
+        state.axSample = lines.slice(0, 8).join('\n') + (lines.length > 8 ? `\n... (${lines.length} lines total, ${interactiveCount} interactive)` : '');
+        state.landmarks = headings;
+        state.lastReadStep = step;
+        state.digest = `AX:${lines.length}L ${interactiveCount}int | ${headings.slice(0,2).join(' | ')}`;
+      }
+
+      if (toolName === 'extract_data' && Array.isArray(result)) {
+        // Merge table info smartly
+        const newTables = result.filter(t => t && (t.headers || t.sampleRows)).map(t => ({
+          headers: t.headers || [],
+          sample: (t.sampleRows || []).slice(0, 2),
+          count: t.totalDataRows || (t.sampleRows || []).length,
+          pattern: t.pattern || t.note || '',
+          nearby: t.nearby || '',
+        }));
+        if (newTables.length) {
+          state.tables = newTables;  // replace with latest (usually one main table on gov pages)
+          state.digest = (state.digest ? state.digest + ' ' : '') + `Tables:${newTables.length} (main ${newTables[0]?.count || '?'} rows)`;
+        }
+      }
+
+      if (toolName === 'click_ax' || toolName === 'set_field' || toolName === 'type_ax' || toolName === 'click') {
+        // Record last action region for focused follow-up reads
+        const ref = result?.ref_id || result?.args?.ref_id || '';
+        if (ref) {
+          state.lastRegion = { type: toolName, ref, step };
+        }
+      }
+
+      // Keep URL for context
+      if (result?.url || result?.pageUrl) {
+        state.url = result.url || result.pageUrl;
+      }
+    } catch (e) {
+      // Never let state update break anything
+    }
+    return state;
+  }
+
+  /**
+   * Returns an extremely compact string suitable for injecting into almost every LLM prompt.
+   * This is what lets LM Studio stay fast: 200-600 chars instead of 8k-30k.
+   */
+  _getCompactStateDigest(tabId) {
+    const state = this.pageStates.get(tabId);
+    if (!state) return '';
+    const parts = [];
+    if (state.digest) parts.push(state.digest);
+    if (state.tables && state.tables.length) {
+      const t = state.tables[0];
+      parts.push(`Table: ${t.count} rows. Sample: ${JSON.stringify(t.sample).slice(0,120)}`);
+    }
+    if (state.landmarks && state.landmarks.length) {
+      parts.push('Landmarks: ' + state.landmarks.slice(0,3).join(' > '));
+    }
+    if (state.lastRegion) {
+      parts.push(`Last action near ${state.lastRegion.ref} (${state.lastRegion.type})`);
+    }
+    const compact = parts.join(' | ').slice(0, 450);
+    return compact ? `[Current page state (compact, auto-maintained): ${compact}]` : '';
+  }
+
+  /**
+   * When we are about to send a big previous tool result, we can replace it with this
+   * tiny digest instead for older turns. Dramatically improves history token cost.
+   */
+  _digestOldReadResult(tabId, toolName, originalContent) {
+    const state = this.pageStates.get(tabId);
+    if (!state || (toolName !== 'get_accessibility_tree' && toolName !== 'extract_data')) {
+      return originalContent;
+    }
+    const digest = this._getCompactStateDigest(tabId);
+    if (!digest) return originalContent;
+    // Keep a tiny hint of what the old full read contained
+    const shortHint = (typeof originalContent === 'string' ? originalContent.slice(0, 180) : '').replace(/\n/g, ' ');
+    return `${digest}\n[Older full read summarized above — details were: ${shortHint}...]`;
+  }
 
   // App-owned progress ledger projected into the prompt.
   _progressLedgerHeader() {
@@ -5711,6 +5839,19 @@ If the input still won't accept typing, the element may need a prior click_ax to
     }
     if (name === 'resize_window') {
       return await this._resizeWindow(tabId, args || {});
+    }
+    if (name === 'get_state_digest') {
+      // V2: pure agent-side, zero page cost, tiny payload for LM Studio
+      const digest = this._getCompactStateDigest(tabId);
+      const state = this.pageStates.get(tabId) || {};
+      return {
+        success: true,
+        digest,
+        tables: state.tables || [],
+        landmarks: state.landmarks || [],
+        lastRegion: state.lastRegion || null,
+        note: 'This is the live compact page memory. Use get_accessibility_tree only when you need fresh ref_ids or missed structure.',
+      };
     }
     if (name === 'schedule_resume') {
       if (!this.scheduler) return { success: false, error: 'Scheduling is not available in this build.' };
@@ -8822,6 +8963,12 @@ If the input still won't accept typing, the element may need a prior click_ax to
       await this._annotateClickProgress(tabId, name, args, response, clickProgressBefore);
       this._recordInteractionRect(tabId, name, response, interactionUrl);
       this._annotateCredentialField(name, response);
+
+      // V2: Feed every successful content read/action into the compact PageState
+      // This powers the observation economy for LM Studio.
+      if (!response?.error && !response?.success === false) {
+        this._updatePageState(tabId, name, response);
+      }
       return response;
     } catch (e) {
       // Content script might not be injected — try injecting it.
@@ -8845,6 +8992,11 @@ If the input still won't accept typing, the element may need a prior click_ax to
         await this._annotateClickProgress(tabId, name, args, response, clickProgressBefore);
         this._recordInteractionRect(tabId, name, response, interactionUrl);
         this._annotateCredentialField(name, response);
+
+        // V2 PageState update (retry path)
+        if (!response?.error && !response?.success === false) {
+          this._updatePageState(tabId, name, response);
+        }
         return response;
       } catch (e2) {
         return { error: `Failed to communicate with page: ${e2.message}` };
@@ -9325,6 +9477,21 @@ If the input still won't accept typing, the element may need a prior click_ax to
       // so it fires "when it's due" during long autonomous loops.
       await this._manageContext(tabId, messages, onUpdate, costState);
 
+      // V2: keep the ultra-compact page state fresh in context for LM Studio.
+      // This is the big lever: instead of re-sending 10k+ char trees, the model
+      // mostly works from this + targeted subtree reads.
+      const freshDigest = this._getCompactStateDigest(tabId);
+      if (freshDigest) {
+        // Update or append a lightweight state note at the end (model sees current reality cheaply)
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg && lastMsg.role === 'user' && typeof lastMsg.content === 'string' && lastMsg.content.includes('[Current page state')) {
+          // replace last one
+          lastMsg.content = lastMsg.content.replace(/\n?\[Current page state[\s\S]*?\]/, '\n' + freshDigest);
+        } else {
+          messages.push({ role: 'user', content: freshDigest });
+        }
+      }
+
       steps++;
       onUpdate('thinking', { step: steps });
 
@@ -9631,6 +9798,17 @@ If the input still won't accept typing, the element may need a prior click_ax to
       // streaming path doesn't get a per-call token count, so this leans on
       // the chars/4 estimate inside _manageContext.
       await this._manageContext(tabId, messages, onUpdate, costState);
+
+      // V2 page digest (same as non-stream path)
+      const freshDigest = this._getCompactStateDigest(tabId);
+      if (freshDigest) {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg && lastMsg.role === 'user' && typeof lastMsg.content === 'string' && lastMsg.content.includes('[Current page state')) {
+          lastMsg.content = lastMsg.content.replace(/\n?\[Current page state[\s\S]*?\]/, '\n' + freshDigest);
+        } else {
+          messages.push({ role: 'user', content: freshDigest });
+        }
+      }
 
       steps++;
       onUpdate('thinking', { step: steps });
