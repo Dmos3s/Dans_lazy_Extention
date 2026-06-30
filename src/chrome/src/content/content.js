@@ -1408,25 +1408,93 @@
     const type = params.type || 'tables';
 
     if (type === 'tables') {
-      return Array.from(document.querySelectorAll('table')).slice(0, 10).map((table, i) => {
-        const rows = Array.from(table.querySelectorAll('tr')).map(tr =>
-          Array.from(tr.querySelectorAll('th, td')).map(cell => cell.innerText.trim())
+      // Smart condensation for dense/government data pages (search results, listings, regs).
+      // Goal: give the model the *shape* + actionable info without dumping 1000s of tokens of raw cells.
+      const tables = Array.from(document.querySelectorAll('table')).slice(0, 8);
+      return tables.map((table, i) => {
+        const allRows = Array.from(table.querySelectorAll('tr'));
+        if (allRows.length === 0) return { index: i, rows: [], note: 'empty table' };
+
+        // Try to separate header
+        let headerRow = null;
+        let dataRows = allRows;
+        const firstRowCells = allRows[0].querySelectorAll('th, td');
+        const hasTh = allRows[0].querySelector('th');
+        if (hasTh || (firstRowCells.length > 0 && allRows.length > 1)) {
+          headerRow = Array.from(firstRowCells).map(c => c.innerText.trim().slice(0, 60));
+          dataRows = allRows.slice(1);
+        } else {
+          headerRow = Array.from(firstRowCells).map(c => c.innerText.trim().slice(0, 60));
+        }
+
+        const totalDataRows = dataRows.length;
+        const maxSample = 4;
+        const sample = dataRows.slice(0, maxSample).map(tr =>
+          Array.from(tr.querySelectorAll('th, td')).map(cell => cell.innerText.trim().slice(0, 80))
         );
-        return { index: i, rows };
+
+        // Detect near-identical row pattern (common in gov result tables)
+        let patternNote = '';
+        if (totalDataRows > maxSample + 2) {
+          const firstSampleSig = JSON.stringify(sample[0] || []);
+          const similarCount = dataRows.slice(maxSample).filter(tr => {
+            const sig = JSON.stringify(Array.from(tr.querySelectorAll('th, td')).map(c => c.innerText.trim().slice(0, 40)));
+            return sig === firstSampleSig;
+          }).length;
+          if (similarCount > 2) {
+            patternNote = `${similarCount + maxSample} rows follow nearly identical structure to the samples above.`;
+          } else {
+            patternNote = `${totalDataRows} total data rows (more rows exist beyond samples).`;
+          }
+        }
+
+        // Try to find nearby controls (search box, filters, pagination) for context — extremely useful on .gov
+        let nearbyControls = '';
+        try {
+          const container = table.closest('form, section, div[role="region"], main, body') || table.parentElement;
+          if (container) {
+            const controls = [];
+            const inputs = container.querySelectorAll('input[type="text"], input[type="search"], select, button');
+            for (let c = 0; c < Math.min(inputs.length, 6); c++) {
+              const el = inputs[c];
+              const label = (el.getAttribute('aria-label') || el.placeholder || el.name || el.id || '').trim().slice(0, 30);
+              if (label) controls.push(label);
+            }
+            if (controls.length) nearbyControls = 'Nearby controls: ' + controls.join(' | ');
+          }
+        } catch {}
+
+        // Try to find pagination text near the table
+        let pagination = '';
+        try {
+          const pagText = (table.parentElement?.innerText || '').match(/(page \d+ of \d+|\d+[-–]\d+ of \d+|showing \d+[-–]\d+ of \d+)/i);
+          if (pagText) pagination = pagText[0];
+        } catch {}
+
+        return {
+          index: i,
+          headers: headerRow,
+          sampleRows: sample,
+          totalDataRows,
+          pattern: patternNote || (totalDataRows > maxSample ? `${totalDataRows} total data rows` : ''),
+          nearby: nearbyControls,
+          pagination: pagination || undefined,
+          note: 'Use get_accessibility_tree with filter:"interactive" or ref_id on specific rows/controls for clicking. Large tables are condensed here to save tokens.'
+        };
       });
     }
 
     if (type === 'headings') {
       return Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).map(h => ({
         level: parseInt(h.tagName[1]),
-        text: h.innerText.trim(),
-      }));
+        text: h.innerText.trim().slice(0, 120),
+      })).slice(0, 30);
     }
 
     if (type === 'images') {
-      return Array.from(document.querySelectorAll('img[src]')).slice(0, 50).map(img => ({
-        src: img.src,
-        alt: img.alt || '',
+      return Array.from(document.querySelectorAll('img[src]')).slice(0, 30).map(img => ({
+        src: img.src.slice(0, 200),
+        alt: (img.alt || '').slice(0, 80),
         width: img.naturalWidth,
         height: img.naturalHeight,
       }));

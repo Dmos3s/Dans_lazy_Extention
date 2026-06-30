@@ -1,23 +1,33 @@
 <svg width="691" height="691" viewBox="0 0 691 691" fill="none" xmlns="http://www.w3.org/2000/svg">
-<!-- Brain emoji style icon - fills the canvas properly -->
-<g transform="translate(345.5, 345.5) scale(5.8) translate(-50, -55)">
-  <!-- Brain stem -->
-  <path d="M47 98h6v12h-6z" fill="#E87DA0"/>
-  <!-- Left hemisphere -->
-  <path d="M50 18C38 18 28 24 23 33c-3-2-6-3-10-3C5 30 0 38 0 48c0 5 2 10 5 14-2 3-3 7-3 11 0 9 5 17 13 21 1 8 8 14 16 16v-8h19V18z" fill="#F9A8C9"/>
-  <!-- Right hemisphere -->
-  <path d="M50 18c12 0 22 6 27 15 3-2 6-3 10-3 8 0 13 8 13 18 0 5-2 10-5 14 2 3 3 7 3 11 0 9-5 17-13 21-1 8-8 14-16 16v-8H50V18z" fill="#F472B6"/>
-  <!-- Center fissure -->
-  <line x1="50" y1="18" x2="50" y2="102" stroke="#D4467E" stroke-width="2"/>
-  <!-- Left brain folds -->
-  <path d="M48 30C38 32 30 38 26 46" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M48 48C34 48 22 54 18 62" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M48 66C38 68 28 74 24 82" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M48 84C42 86 36 90 33 95" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <!-- Right brain folds -->
-  <path d="M52 30C62 32 70 38 74 46" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M52 48C66 48 78 54 82 62" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M52 66C62 68 72 74 76 82" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M52 84C58 86 64 90 67 95" stroke="#D4467E" stroke-width="2" stroke-linecap="round" fill="none"/>
+<!-- Doll — secretary silhouette, pink palette -->
+<g transform="translate(345.5, 200)">
+  <!-- Hair bun -->
+  <circle cx="0" cy="-55" r="52" fill="#F472B6"/>
+  <ellipse cx="0" cy="-18" rx="78" ry="88" fill="#F9A8C9"/>
+  <!-- Neck -->
+  <rect x="-22" y="62" width="44" height="36" rx="8" fill="#F9A8C9"/>
+  <!-- Collar / blouse -->
+  <path d="M-95 98 Q0 72 95 98 L110 200 Q0 175 -110 200 Z" fill="#F472B6"/>
+  <!-- Lapels -->
+  <path d="M0 98 L-38 200 L0 168 Z" fill="#E87DA0"/>
+  <path d="M0 98 L38 200 L0 168 Z" fill="#E87DA0"/>
+  <!-- Glasses -->
+  <ellipse cx="-34" cy="8" rx="30" ry="22" stroke="#D4467E" stroke-width="6" fill="none"/>
+  <ellipse cx="34" cy="8" rx="30" ry="22" stroke="#D4467E" stroke-width="6" fill="none"/>
+  <line x1="-4" y1="8" x2="4" y2="8" stroke="#D4467E" stroke-width="5"/>
+  <line x1="-64" y1="4" x2="-88" y2="-2" stroke="#D4467E" stroke-width="5" stroke-linecap="round"/>
+  <line x1="64" y1="4" x2="88" y2="-2" stroke="#D4467E" stroke-width="5" stroke-linecap="round"/>
+  <!-- Lips -->
+  <path d="M-22 52 Q0 68 22 52 Q0 78 -22 52 Z" fill="#D4467E"/>
+  <path d="M-22 52 Q0 62 22 52" stroke="#B83268" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- Clipboard -->
+  <g transform="translate(115, 55) rotate(8)">
+    <rect x="0" y="0" width="88" height="118" rx="10" fill="#F9A8C9" stroke="#D4467E" stroke-width="4"/>
+    <rect x="28" y="-14" width="32" height="22" rx="6" fill="#E87DA0" stroke="#D4467E" stroke-width="3"/>
+    <line x1="18" y1="28" x2="70" y2="28" stroke="#D4467E" stroke-width="4" stroke-linecap="round"/>
+    <line x1="18" y1="48" x2="70" y2="48" stroke="#D4467E" stroke-width="4" stroke-linecap="round"/>
+    <line x1="18" y1="68" x2="58" y2="68" stroke="#D4467E" stroke-width="4" stroke-linecap="round"/>
+    <text x="44" y="102" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" fill="#D4467E">D</text>
+  </g>
 </g>
 </svg>

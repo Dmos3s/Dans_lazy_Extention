@@ -88,7 +88,7 @@ function normalizePendingClarify(data, now = Date.now()) {
 }
 
 function isActiveRunError(error) {
-  return /agent run is already in progress|active WebBrain run/i.test(String(error?.message || error || ''));
+  return /agent run is already in progress|active Doll run/i.test(String(error?.message || error || ''));
 }
 
 function normalizeDoneOutcome(value) {
@@ -1071,7 +1071,7 @@ export class ScheduledJobManager {
     }
 
     if (this._runningTabs.has(tabId) || this.agent.isRunning(tabId)) {
-      await this._requeue(job, 'The target tab already has an active WebBrain run.');
+      await this._requeue(job, 'The target tab already has an active Doll run.');
       return;
     }
     this._runningTabs.add(tabId);
@@ -1126,7 +1126,7 @@ export class ScheduledJobManager {
     } catch (e) {
       this._waitingForInput.delete(job.id);
       if (isActiveRunError(e)) {
-        await this._requeue(running, 'The target tab already has an active WebBrain run.');
+        await this._requeue(running, 'The target tab already has an active Doll run.');
       } else {
         await this._markFailed(running, e.message);
       }

@@ -96,9 +96,9 @@ export async function fetchPdfBytes(url) {
     } catch (e) {
       if (typeof url === 'string' && url.startsWith('file://')) {
         throw new Error(
-          'Cannot fetch local PDF from a file:// URL. WebBrain needs ' +
+          'Cannot fetch local PDF from a file:// URL. Doll needs ' +
           'file-URL access in Chrome: open chrome://extensions, find ' +
-          'WebBrain, click "Details", and enable "Allow access to file URLs". ' +
+          'Doll, click "Details", and enable "Allow access to file URLs". ' +
           'Then reload the PDF tab and try read_pdf again.'
         );
       }

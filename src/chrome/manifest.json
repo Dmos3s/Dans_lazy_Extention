@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "WebBrain",
+  "name": "Doll",
   "version": "18.3.5",
-  "description": "Open-source AI browser agent — chat with pages, automate tasks, multi-provider LLM support.",
+  "description": "Your personal AI secretary — reads pages, handles errands, clicks and types on your behalf.",
   "permissions": [
     "sidePanel",
     "activeTab",
@@ -64,7 +64,7 @@
   ],
   "options_page": "src/ui/settings.html",
   "action": {
-    "default_title": "WebBrain",
+    "default_title": "Doll",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -81,7 +81,7 @@
       "suggested_key": {
         "default": "Alt+Shift+W"
       },
-      "description": "Open WebBrain panel"
+      "description": "Open Doll panel"
     }
   },
   "web_accessible_resources": [

@@ -90,7 +90,7 @@ export class ProviderManager {
       webbrain_cloud: {
         type: 'openai',
         category: 'cloud',
-        label: 'WebBrain Cloud',
+        label: 'Doll Cloud',
         providerName: 'webbrain-cloud',
         baseUrl: 'https://api.webbrain.one/v1',
         model: 'webbrain-cloud 1.0',

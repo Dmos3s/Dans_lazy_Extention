@@ -68,7 +68,7 @@ function createContextMenus() {
     void chrome.runtime.lastError;
     chrome.contextMenus.create({
       id: CONTEXT_MENU_ASK_SELECTION_ID,
-      title: 'Ask WebBrain about this',
+      title: 'Ask Doll about this',
       contexts: ['selection'],
     }, () => {
       const err = chrome.runtime.lastError;
@@ -368,7 +368,7 @@ async function ensureWebBrainGroup(tab) {
       groupId = await chrome.tabs.group({ tabIds: [tab.id] });
       try {
         await chrome.tabGroups.update(groupId, {
-          title: 'WebBrain', color: 'blue', collapsed: false,
+          title: 'Doll', color: 'blue', collapsed: false,
         });
       } catch { /* ignore styling failure */ }
       webBrainGroupByWindow.set(tab.windowId, groupId);

@@ -54,7 +54,7 @@ export class OpenAICompatibleProvider extends BaseLLMProvider {
     // OpenRouter-specific headers
     if (providerName === 'openrouter') {
       headers['HTTP-Referer'] = this.config.siteUrl || 'https://github.com/webbrain-one/webbrain';
-      headers['X-Title'] = 'WebBrain';
+      headers['X-Title'] = 'Doll';
     }
     return headers;
   }
@@ -103,7 +103,7 @@ export class OpenAICompatibleProvider extends BaseLLMProvider {
     const providerName = (this.config.providerName || '').toLowerCase();
     if (status === 402 && providerName === 'webbrain-cloud') {
       let subscribeUrl = this._webbrainSubscribeUrl();
-      let message = 'Daily free WebBrain Cloud allowance used.';
+      let message = 'Daily free Doll Cloud allowance used.';
       try {
         const parsed = JSON.parse(body || '{}');
         subscribeUrl = parsed.subscribe_url || subscribeUrl;
@@ -176,6 +176,15 @@ export class OpenAICompatibleProvider extends BaseLLMProvider {
       Object.assign(body, options.extraBody);
     }
 
+    // Local OpenAI-compat servers (LM Studio, Ollama, etc.) benefit hugely from
+    // prompt prefix caching on agent loops (same system + long history + repeated
+    // page structure on gov/data sites). LM Studio in particular often uses a
+    // backend that respects this.
+    const pName = (this.config.providerName || '').toLowerCase();
+    if (pName === 'lmstudio' || pName === 'ollama' || this.config.category === 'local') {
+      if (body.cache_prompt == null) body.cache_prompt = true;
+    }
+
     const url = `${this.baseUrl}/chat/completions`;
     let res;
     try {
@@ -227,6 +236,13 @@ export class OpenAICompatibleProvider extends BaseLLMProvider {
     if (options.extraBody && typeof options.extraBody === 'object') {
       Object.assign(body, options.extraBody);
     }
+
+    // Local cache hint (same as non-stream)
+    const pName2 = (this.config.providerName || '').toLowerCase();
+    if (pName2 === 'lmstudio' || pName2 === 'ollama' || this.config.category === 'local') {
+      if (body.cache_prompt == null) body.cache_prompt = true;
+    }
+
     this._addStreamUsageOptions(body);
 
     const streamUrl = `${this.baseUrl}/chat/completions`;

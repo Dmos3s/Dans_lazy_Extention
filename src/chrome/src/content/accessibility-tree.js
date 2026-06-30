@@ -711,9 +711,73 @@
 
       sweepDeadRefs();
 
-      const output = lines.join('\n');
+      // === Creative condensation for complex / government pages ===
+      // Government sites are full of repetitive table rows, result cards, list items.
+      // We collapse runs of near-identical siblings *after* building the tree so the
+      // model still gets stable ref_ids for the *visible* representatives, but history
+      // and prompt size stay small. This is free CPU work in the content script.
+      function condenseRepetitive(linesArr) {
+        if (!linesArr || linesArr.length < 8) return linesArr;
+
+        const out = [];
+        let i = 0;
+        while (i < linesArr.length) {
+          const line = linesArr[i];
+          // Signature: role + first ~35 chars of name (ignore ref_id and attributes for matching)
+          const sigMatch = line.match(/^(\s*)([a-z-]+)\s+"([^"]{0,35})/);
+          if (!sigMatch) {
+            out.push(line);
+            i++;
+            continue;
+          }
+
+          const indent = sigMatch[1];
+          const role = sigMatch[2];
+          const namePrefix = sigMatch[3].toLowerCase().trim();
+          const baseSig = indent + role + '|' + namePrefix;
+
+          // Count how many consecutive lines have nearly the same signature at this indent
+          let count = 1;
+          let j = i + 1;
+          for (; j < linesArr.length; j++) {
+            const next = linesArr[j];
+            if (!next.startsWith(indent)) break;
+            const m = next.match(/^(\s*)([a-z-]+)\s+"([^"]{0,35})/);
+            if (!m || (m[1] + m[2] + '|' + m[3].toLowerCase().trim()) !== baseSig) break;
+            count++;
+          }
+
+          if (count >= 5) {
+            // Keep the first 2 (with their real ref_ids so model can still act on them),
+            // then a compact summary line, then the last 1 if many.
+            out.push(line); // first representative
+            if (count > 2) out.push(linesArr[i + 1]); // second
+            const omitted = count - (count > 2 ? 2 : 1);
+            if (omitted > 0) {
+              out.push(`${indent}... [${omitted} more identical "${role}" rows/cards like above — pattern repeats; use pagination/filter tools or scroll + re-read for more]`);
+            }
+            if (count > 3) {
+              out.push(linesArr[i + count - 1]); // last representative (often useful)
+            }
+            i = j;
+          } else {
+            out.push(line);
+            i++;
+          }
+        }
+        return out;
+      }
+
+      let processedLines = lines;
+      // Only apply aggressive condensation on visible/interactive reads of larger trees
+      // (the ones that hurt most on dense gov pages). Full "all" still needs fidelity.
+      if ((filter === 'visible' || filter === 'interactive' || !filter) && lines.length > 60) {
+        processedLines = condenseRepetitive(lines);
+      }
+
+      const output = processedLines.join('\n');
       if (effMaxChars != null && page != null && Math.floor(Number(page) || 1) > 1) {
-        return { ...sliceTreePage(output, lines, effMaxChars, page), viewport };
+        return { ...sliceTreePage(output, processedLines, effMaxChars, page), viewport };
       }
       // For 'visible' / 'interactive', truncate gracefully on overflow —
       // small models prefer a partial tree to a hard error. For 'all'
@@ -727,12 +791,13 @@
       //   2. Only return a hard error when even the first page would be
       //      empty (chunkSize too small).
       if (effMaxChars != null && output.length > effMaxChars) {
+        const linesForSlice = processedLines || lines;
         if (filter && filter !== 'all' && maxChars == null) {
-          return { ...sliceTreePage(output, lines, effMaxChars, page), viewport };
+          return { ...sliceTreePage(output, linesForSlice, effMaxChars, page), viewport };
         }
-        const sliced = sliceTreePage(output, lines, effMaxChars, page);
+        const sliced = sliceTreePage(output, linesForSlice, effMaxChars, page);
         if (sliced.pageContent && !sliced.pageContent.startsWith('[tree page')) {
-          let hint = `Tree was ${output.length} chars; auto-sliced to fit ${effMaxChars}. `;
+          let hint = `Tree was ${output.length} chars (condensed where repetitive); auto-sliced to fit ${effMaxChars}. `;
           if (sliced.hasMore) {
             hint += `Call again with page:${sliced.nextPage} for the next slice, OR pass a smaller maxDepth (e.g. ${Math.max(3, (opts.maxDepth || 15) - 5)}) or a refId to anchor on a specific subtree.`;
           }

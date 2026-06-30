@@ -48,6 +48,11 @@ export class LlamaCppProvider extends BaseLLMProvider {
       body.tool_choice = options.toolChoice || 'auto';
     }
 
+    // llama.cpp server itself supports cache_prompt for faster subsequent turns
+    // when the prefix (system + history) is stable — huge win for agent loops on
+    // the same complex government page.
+    if (body.cache_prompt == null) body.cache_prompt = true;
+
     const url = `${this.baseUrl}/v1/chat/completions`;
     let res;
     try {
@@ -98,6 +103,8 @@ export class LlamaCppProvider extends BaseLLMProvider {
       body.tools = options.tools;
       body.tool_choice = options.toolChoice || 'auto';
     }
+
+    if (body.cache_prompt == null) body.cache_prompt = true;
 
     const streamUrl = `${this.baseUrl}/v1/chat/completions`;
     let res;

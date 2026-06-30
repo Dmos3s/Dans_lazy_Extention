@@ -886,7 +886,7 @@ export class Agent {
       ? 'API mutations are enabled for this conversation. Stop further same-shape UI clicks and sample one direct fetch_url replay for the next matching item.'
       : 'API mutations are NOT enabled for this conversation; ask the user to type /allow-api before using mutating fetch_url, or continue through the visible UI.';
     const replay = shortcut.replayRequestId
-      ? ` Captured replay material is available as replayRequestId "${shortcut.replayRequestId}"${shortcut.replayHasBody ? ' with a request body' : ''}${shortcut.replayHeaderNames?.length ? ` and headers (${shortcut.replayHeaderNames.join(', ')})` : ''}; use fetch_url({url: "<next matching concrete URL>", method: "${shortcut.method}", replayRequestId: "${shortcut.replayRequestId}"}) for exactly one sampled remaining item so WebBrain reuses same-origin body/headers without exposing hidden tokens.`
+      ? ` Captured replay material is available as replayRequestId "${shortcut.replayRequestId}"${shortcut.replayHasBody ? ' with a request body' : ''}${shortcut.replayHeaderNames?.length ? ` and headers (${shortcut.replayHeaderNames.join(', ')})` : ''}; use fetch_url({url: "<next matching concrete URL>", method: "${shortcut.method}", replayRequestId: "${shortcut.replayRequestId}"}) for exactly one sampled remaining item so Doll reuses same-origin body/headers without exposing hidden tokens.`
       : '';
     return `[BULK API MUTATION PATTERN: You have successfully clicked ${shortcut.count} similar "${shortcut.action}" controls, and each click triggered ${shortcut.method} requests with the same URL shape: ${requestShape}. Recent concrete examples: ${examples}. This is repeated bulk mutation work, not a stuck loop. ${permission}${replay} If the sampled direct API call returns success:false or HTTP 4xx/5xx, fall back to the visible UI for this shape and do not loop on fetch_url. Verify the page after any API batch.]`;
   }
@@ -912,7 +912,7 @@ export class Agent {
   }
 
   _bulkApiReplayInstruction(shortcut) {
-    return `Stop executing same-shape UI clicks. API mutations are enabled and WebBrain captured replayRequestId "${shortcut.replayRequestId}" for ${shortcut.method} ${shortcut.requestShape}. On the next turn, sample one remaining matching item with fetch_url({url: "<next matching concrete URL>", method: "${shortcut.method}", replayRequestId: "${shortcut.replayRequestId}"}). If that sample fails, fall back to the visible UI for this request shape.`;
+    return `Stop executing same-shape UI clicks. API mutations are enabled and Doll captured replayRequestId "${shortcut.replayRequestId}" for ${shortcut.method} ${shortcut.requestShape}. On the next turn, sample one remaining matching item with fetch_url({url: "<next matching concrete URL>", method: "${shortcut.method}", replayRequestId: "${shortcut.replayRequestId}"}). If that sample fails, fall back to the visible UI for this request shape.`;
   }
 
   _appendSyntheticToolResults(tabId, toolCalls, startIndex, messages, onUpdate, step, makeResult) {
@@ -1098,7 +1098,7 @@ export class Agent {
       let existing = null;
       try {
         const groups = await chrome.tabGroups.query({
-          title: 'WebBrain',
+          title: 'Doll',
           windowId: sourceTab.windowId,
         });
         if (Array.isArray(groups) && groups.length > 0) existing = groups[0];
@@ -1115,7 +1115,7 @@ export class Agent {
       // The first action.onClicked elsewhere will opt the source tab in.
       const gid = await chrome.tabs.group({ tabIds: [tabId] });
       await chrome.tabGroups.update(gid, {
-        title: 'WebBrain', color: 'blue', collapsed: false,
+        title: 'Doll', color: 'blue', collapsed: false,
       });
       return gid;
     } catch (_) { return -1; }
@@ -1380,7 +1380,7 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
     // /allow-api for this tab. Inject only once per "allowed run" to avoid
     // bloating every subsequent turn.
     if (this.apiAllowedTabs.has(tabId) && !this.apiAllowedInjected.has(tabId)) {
-      contextLine += `[USER OVERRIDE — /allow-api: For this conversation the user has explicitly authorized you to use API mutations (POST/PUT/PATCH/DELETE via fetch_url) when you judge API to be more reliable than UI for a specific step. The default UI-first rule still applies — reach for the API when UI has failed/is genuinely unworkable, or when WebBrain reports a [BULK API MUTATION PATTERN] for repeated successful same-kind UI actions. Before any destructive API call (anything that creates, deletes, transfers, or charges), state the URL, method, and payload in plain text in your response so the user can see what you're about to do.]\n\n`;
+      contextLine += `[USER OVERRIDE — /allow-api: For this conversation the user has explicitly authorized you to use API mutations (POST/PUT/PATCH/DELETE via fetch_url) when you judge API to be more reliable than UI for a specific step. The default UI-first rule still applies — reach for the API when UI has failed/is genuinely unworkable, or when Doll reports a [BULK API MUTATION PATTERN] for repeated successful same-kind UI actions. Before any destructive API call (anything that creates, deletes, transfers, or charges), state the URL, method, and payload in plain text in your response so the user can see what you're about to do.]\n\n`;
       this.apiAllowedInjected.add(tabId);
     }
 
@@ -3775,7 +3775,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
         onUpdate('clarify', {
           clarifyId,
           permission: { capability, host },
-          question: `WebBrain wants to ${CAPABILITY_LABEL[capability] || 'act on'} ${host}. Allow it?`,
+          question: `Doll wants to ${CAPABILITY_LABEL[capability] || 'act on'} ${host}. Allow it?`,
           options: ['once', 'always', 'deny'],
         });
       } catch { /* UI emit must never break the run */ }
@@ -8780,6 +8780,35 @@ If the input still won't accept typing, the element may need a prior click_ax to
     if (name === 'scroll') {
       args = await this._augmentScrollArgsWithLastInteraction(tabId, args);
     }
+
+    // === Creative speed optimization for LM Studio / local models on complex pages ===
+    // Government and data pages are expensive to re-read fully. When the active
+    // provider looks local/slower, auto-bias toward efficient params the model
+    // was supposed to ask for anyway. This keeps capability (ref_ids still work)
+    // while cutting tokens and latency dramatically on repeated observations.
+    if (name === 'get_accessibility_tree') {
+      try {
+        const provider = this.providerManager.getActive();
+        const isLocalish = provider && (provider.config?.category === 'local' || (provider.name || '').includes('lm') || provider.config?.providerName === 'lmstudio');
+        const tier = provider?.promptTier || 'mid';
+
+        if (isLocalish || tier !== 'full') {
+          const a = { ...(args || {}) };
+          // If no ref_id (full page read), default to visible + sane depth for dense pages.
+          if (!a.ref_id) {
+            if (!a.filter) a.filter = 'visible';
+            if (a.maxDepth == null || a.maxDepth > 10) a.maxDepth = 8;
+            // On local, keep the output reasonable unless the model explicitly asked for more.
+            if (a.maxChars == null || a.maxChars > 12000) a.maxChars = 7000;
+          } else {
+            // Subtree read: still keep it shallow unless asked.
+            if (a.maxDepth == null || a.maxDepth > 6) a.maxDepth = 5;
+          }
+          args = a;
+        }
+      } catch {}
+    }
+
     const clickProgressBefore = (name === 'click' || name === 'click_ax')
       ? await this._clickProgressSnapshot(tabId)
       : '';

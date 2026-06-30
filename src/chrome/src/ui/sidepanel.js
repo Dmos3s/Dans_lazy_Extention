@@ -130,7 +130,7 @@ if (globalThis.chrome?.storage?.onChanged) {
     cloudReady = true;
     localModelChoices = [];
     if (providerBody) {
-      providerBody.textContent = 'WebBrain Cloud is ready with a free daily allowance. Requests go through api.webbrain.one; debug and quota logs store metadata only by default, not prompt text, screenshots, or responses.';
+      providerBody.textContent = 'Doll Cloud is ready with a free daily allowance. Requests go through api.webbrain.one; debug and quota logs store metadata only by default, not prompt text, screenshots, or responses.';
     }
     if (providerStatus) {
       providerStatus.textContent = '';
@@ -145,7 +145,7 @@ if (globalThis.chrome?.storage?.onChanged) {
         await dismissOnboarding();
       });
       providerStatus.append(
-        document.createTextNode('Using WebBrain Cloud. '),
+        document.createTextNode('Using Doll Cloud. '),
         changeLink,
         document.createTextNode('.')
       );
@@ -2317,7 +2317,7 @@ async function parseSlashCommands(text, tabId = currentTabId) {
   // /export — export conversation as markdown
   if (/^\/export\b\s*/i.test(text)) {
     const messages = messagesEl.querySelectorAll('.message');
-    let md = '# WebBrain Conversation\n\n';
+    let md = '# Doll Conversation\n\n';
     for (const msg of messages) {
       const textEl = msg.querySelector('.message-text');
       if (!textEl) continue;
@@ -2326,7 +2326,7 @@ async function parseSlashCommands(text, tabId = currentTabId) {
       if (msg.classList.contains('user')) {
         md += `**You:** ${content}\n\n`;
       } else if (msg.classList.contains('assistant')) {
-        md += `**WebBrain:** ${content}\n\n`;
+        md += `**Doll:** ${content}\n\n`;
       } else if (msg.classList.contains('system')) {
         md += `*${content}*\n\n`;
       }
@@ -3857,7 +3857,7 @@ function sendToBackground(action, data = {}) {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
         } else if (response == null) {
-          reject(new Error(`No response from WebBrain background for "${action}". The background script may have restarted or crashed; reload the sidebar/extension and check the extension console for the original error.`));
+          reject(new Error(`No response from Doll background for "${action}". The background script may have restarted or crashed; reload the sidebar/extension and check the extension console for the original error.`));
         } else if (response?.error) {
           reject(new Error(response.error));
         } else {
