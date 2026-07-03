@@ -92,11 +92,11 @@ const ADAPTERS = [
     category: 'general',
     match: (url) => /^https?:\/\/mail\.google\.com\//.test(url),
     notes: `
-- Composing: the "Compose" button opens a floating window. The "To" field is a contact picker — type the name and pick from the dropdown, don't just type the raw email.
-- The body is a contenteditable div (rich text), not a textarea. Click into it before typing.
-- Sending: the "Send" button is bottom-left of the compose window; "Send + Schedule" arrow is next to it for scheduled send.
-- Search uses operators: from:, to:, subject:, has:attachment, before:YYYY/MM/DD.
-- Threads collapse old messages — click "Show trimmed content" or the message header to expand.`,
+- Compose: "Compose" button opens a floating window. "To" field is a contact picker — type + pick from dropdown. Body is a contenteditable div, not a textarea.
+- Send: "Send" button bottom-left of compose window; "Send + Schedule" arrow is next to it.
+- Search uses operators: from:, to:, subject:, has:attachment, before:YYYY/MM/DD. Threads collapse old messages — click "Show trimmed content" to expand.
+- Bulk inbox processing: Gmail lists are virtualized. Always start with get_state_digest, then extract_data for visible rows. Work in small batches; update the ledger after each item.
+- progress_update unique IDs: the ledger generates row IDs from the \`target\` field. If you call \`progress_update({items: [{action: "move", target: "BidNet Direct email"}]})\` for every email from that sender, ALL emails get the SAME ledger ID, and after compaction the ledger cannot distinguish which specific emails were processed. Instead: use the **email subject line** or the **email URL** (from extract_data result, e.g. \`#inbox/ABC123\`) as the \`id\` field. Example: \`progress_update({items: [{id: "Invoice for June", action: "move", status: "processed"}, {id: "Weekly digest", action: "move", status: "processed"}]})\`. Use \`progress_read\` after any context trim to check which emails are already processed before re-selecting.`,
   },
   {
     name: 'google-docs',
@@ -577,6 +577,30 @@ const ADAPTERS = [
 - Folder tree on the left collapses; expand the relevant folder before clicking conversations inside.
 - Calendar integration: New > Calendar event (not Email) opens the event composer.
 - Reply / Reply all / Forward buttons live at the top of the reading pane AND inline at the bottom of the most recent message; either works.`,
+  },
+  {
+    name: 'yahoo-mail',
+    category: 'general',
+    match: (url) => /^https?:\/\/mail\.yahoo\.com\//.test(url),
+    notes: `
+- Compose: "Compose" button (usually bottom-left or a floating button) opens a new message window. To field is a contact picker — type + pick from the dropdown.
+- Body is a rich-text editor (bold, italic, bullet lists available). Click into it before typing.
+- "Focused" inbox (default) vs "Other" — new senders may land in "Other". Check both if a message is missing.
+- Attachments: use the paperclip icon in the compose window. File size limit is 25MB.
+- Folders/Labels are in the left sidebar; expand collapsed folders before searching.
+- Search bar at the top uses operators similar to Gmail: from:, to:, subject:, has:attachment.`,
+  },
+  {
+    name: 'proton-mail',
+    category: 'general',
+    match: (url) => /^https?:\/\/mail\.proton\.com\//.test(url),
+    notes: `
+- Compose: "New Message" button opens a compose window. To field is a contact picker — type + pick from the dropdown. Body is a rich-text editor (bold, italic, lists).
+- Encryption: messages from non-Proton users arrive as encrypted emails with a "View in browser" link. The composition UI for sending encrypted messages to non-Proton recipients uses a simple password + expiry flow.
+- "Sent" folder shows sent messages; "Archives" is the catch-all if custom folders aren't used.
+- Labels (not folders) are the primary organizational tool in Proton Mail. Create labels via the sidebar; messages can have multiple labels.
+- Search bar at the top supports operators: from:, to:, subject:, date:, label:.
+- Two-factor authentication is strongly encouraged and sometimes required — surface 2FA prompts to the user, never auto-approve.`,
   },
   {
     name: 'google-sheets',

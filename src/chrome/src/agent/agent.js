@@ -1,4 +1,5 @@
 import { AGENT_TOOLS, AGENT_TOOL_NAMES, getToolsForMode, SYSTEM_PROMPT_ASK, SYSTEM_PROMPT_ACT, SYSTEM_PROMPT_ACT_COMPACT, SYSTEM_PROMPT_ACT_MID } from './tools.js';
+import { diagnoseEmptyOutput, formatDiagnosticReport, runRemediationChain, executeRemediation, DIAGNOSTIC_CATEGORIES, REMEDIATION_ACTIONS } from './empty-output-debugger.js';
 import { URL_FAMILY_TOOLS, resourceBucket, bucketArgsKey } from './loop-bucket.js';
 import { isCredentialField, CREDENTIAL_NOTE_STRICT } from './credential-fields.js';
 import { detectProgressAction, formatLedgerSummary, isValidLedgerStatus, ledgerDoneBlock, progressCounts, selectLedgerRows, unresolvedLedgerRows, upsertLedgerItems } from './progress-ledger.js';
@@ -82,14 +83,16 @@ export class Agent {
     this.currentRunId = new Map(); // tabId -> active trace runId (for recorder hooks)
     this.currentCostState = new Map(); // tabId -> active cloud/router cost state
     this.maxSteps = 130; // safety limit for autonomous loops (configurable via settings)
-    this.maxContextMessages = 50; // trim beyond this
+    this.maxContextMessages = 100; // trim beyond this (was 50, doubled for complex tasks)
     this._debugLog = []; // ring buffer for deep verbose (LLM requests/responses)
     this._debugLogMax = 200; // max entries before oldest are dropped
-    this.maxContextChars = 80000; // rough char budget (~20k tokens)
+    this._errorLog = []; // ring buffer for captured errors (CDP, runtime.lastError, tool failures, etc.) for debugging
+    this._errorLogMax = 100;
+    this.maxContextChars = 200000; // rough char budget (~50k tokens) (was 80k, increased for complex tasks)
     // Default fraction of the model's context window at which we auto-compact.
     // _contextCompactRatioForWindow tightens this for small context windows and
     // relaxes it for very large ones.
-    this.contextCompactRatio = 0.75;
+    this.contextCompactRatio = 0.85; // was 0.75, increased to delay compaction for complex tasks
     // tabId -> most recent provider-reported input (prompt) token count. Drives
     // the token-aware auto-compaction trigger; updated after each LLM response,
     // reset whenever we compact.
@@ -267,6 +270,110 @@ export class Agent {
     return this._runningTabs.has(tabId);
   }
 
+  /**
+   * Return a snapshot of all in-memory state for debugging / monitoring.
+   * Returns per-tab counts (Map size = number of entries, Set size = number
+   * of active tabs) plus singleton summaries.  Useful for spotting leaks
+   * after long sessions.
+   */
+  getMemoryStats() {
+    const perTab = {};
+    const tabIds = new Set([
+      ...this.conversations.keys(),
+      ...this.progressLedgers.keys(),
+      ...this.progressPageScopes.keys(),
+      ...this.progressSessions.keys(),
+      ...this.conversationModes.keys(),
+      ...this.conversationIds.keys(),
+      ...this.hydratedTabs.values(),
+      ...this.persistTimers.keys(),
+      ...this.abortFlags.keys(),
+      ...this.currentRunId.keys(),
+      ...this.currentCostState.keys(),
+      ...this._lastInputTokens.keys(),
+      ...this._lastEstCharsAtReport.keys(),
+      ...this._compactCooldown.keys(),
+      ...this.pageStates.keys(),
+      ...this._pendingPlans.keys(),
+      ...this._lastCdpClickIdent.keys(),
+      ...this._lastClickProgress.keys(),
+      ...this.recentCalls.keys(),
+      ...this.loopNudges.keys(),
+      ...this.healthyCallsSinceLoop.keys(),
+      ...this.lastAutoScreenshotTs.keys(),
+      ...this.lastSeenAdapter.keys(),
+      ...this.recentCoordClicks.keys(),
+      ...this.apiAllowedTabs.values(),
+      ...this.apiAllowedInjected.values(),
+      ...this.bulkApiMutationClicks.keys(),
+      ...this.bulkApiMutationHints.keys(),
+      ...this.failedBulkApiReplayShapes.keys(),
+      ...this._lastInteractionRect.keys(),
+      ...this._pendingClarifications.keys(),
+      ...this._isPdfTabCache.keys(),
+      ...this._doneBlockCount.keys(),
+      ...this._recentSubmitClicks.keys(),
+      ...this._runningTabs.values(),
+      ...this.scheduledRunPolicies.keys(),
+    ]);
+
+    for (const tabId of tabIds) {
+      perTab[tabId] = {
+        conversations: Number(!!this.conversations.get(tabId)),
+        progressLedgers: Number(!!this.progressLedgers.get(tabId)),
+        progressPageScopes: Number(!!this.progressPageScopes.get(tabId)),
+        progressSessions: Number(!!this.progressSessions.get(tabId)),
+        conversationModes: Number(!!this.conversationModes.get(tabId)),
+        conversationIds: Number(!!this.conversationIds.get(tabId)),
+        hydratedTabs: this.hydratedTabs.has(tabId) ? 1 : 0,
+        persistTimers: Number(!!this.persistTimers.get(tabId)),
+        abortFlags: Number(!!this.abortFlags.get(tabId)),
+        currentRunId: Number(!!this.currentRunId.get(tabId)),
+        currentCostState: Number(!!this.currentCostState.get(tabId)),
+        _lastInputTokens: Number(!!this._lastInputTokens.get(tabId)),
+        _lastEstCharsAtReport: Number(!!this._lastEstCharsAtReport.get(tabId)),
+        _compactCooldown: Number(!!this._compactCooldown.get(tabId)),
+        pageStates: Number(!!this.pageStates.get(tabId)),
+        _pendingPlans: this._pendingPlans.has(tabId) ? (this._pendingPlans.get(tabId) instanceof Map ? this._pendingPlans.get(tabId).size : 1) : 0,
+        _lastCdpClickIdent: Number(!!this._lastCdpClickIdent.get(tabId)),
+        _lastClickProgress: Number(!!this._lastClickProgress.get(tabId)),
+        recentCalls: Number(!!this.recentCalls.get(tabId)),
+        loopNudges: Number(!!this.loopNudges.get(tabId)),
+        healthyCallsSinceLoop: Number(!!this.healthyCallsSinceLoop.get(tabId)),
+        lastAutoScreenshotTs: Number(!!this.lastAutoScreenshotTs.get(tabId)),
+        lastSeenAdapter: Number(!!this.lastSeenAdapter.get(tabId)),
+        recentCoordClicks: Number(!!this.recentCoordClicks.get(tabId)),
+        apiAllowedTabs: this.apiAllowedTabs.has(tabId) ? 1 : 0,
+        apiAllowedInjected: this.apiAllowedInjected.has(tabId) ? 1 : 0,
+        bulkApiMutationClicks: Number(!!this.bulkApiMutationClicks.get(tabId)),
+        bulkApiMutationHints: Number(!!this.bulkApiMutationHints.get(tabId)),
+        failedBulkApiReplayShapes: Number(!!this.failedBulkApiReplayShapes.get(tabId)),
+        _lastInteractionRect: Number(!!this._lastInteractionRect.get(tabId)),
+        _pendingClarifications: this._pendingClarifications.has(tabId) ? (this._pendingClarifications.get(tabId) instanceof Map ? this._pendingClarifications.get(tabId).size : 1) : 0,
+        _isPdfTabCache: Number(!!this._isPdfTabCache.get(tabId)),
+        _doneBlockCount: Number(!!this._doneBlockCount.get(tabId)),
+        _recentSubmitClicks: Number(!!this._recentSubmitClicks.get(tabId)),
+        _runningTabs: this._runningTabs.has(tabId) ? 1 : 0,
+        scheduledRunPolicies: Number(!!this.scheduledRunPolicies.get(tabId)),
+      };
+    }
+
+    return {
+      perTab,
+      singleton: {
+        debugLogCount: this._debugLog.length,
+        debugLogMax: this._debugLogMax,
+        errorLogCount: this._errorLog.length,
+        errorLogMax: this._errorLogMax,
+        pendingPlansTotal: [...this._pendingPlans.values()].reduce((sum, v) => sum + (v instanceof Map ? v.size : 1), 0),
+        pendingClarificationsTotal: [...this._pendingClarifications.values()].reduce((sum, v) => sum + (v instanceof Map ? v.size : 1), 0),
+        cloudCostSpentUsd: this.cloudCostSpentUsd,
+        costAllowanceSessionUsd: this.costAllowanceSessionUsd,
+        costAllowanceTotalUsd: this.costAllowanceTotalUsd,
+      },
+    };
+  }
+
   async getConversationId(tabId) {
     await this._hydrate(tabId);
     return this.conversationIds.get(tabId) || null;
@@ -286,7 +393,7 @@ export class Agent {
 
   async writeScratchpad(tabId, text, options = {}) {
     await this._hydrate(tabId);
-    const mode = options?.mode || this.conversationModes.get(tabId) || 'ask';
+    const mode = options?.mode || this.conversationModes.get(tabId) || 'act';
     this.getConversation(tabId, mode);
     return this._scratchpadWrite(tabId, { text, replace: !!options?.replace });
   }
@@ -565,7 +672,10 @@ export class Agent {
     const key = this._loopCallKey(name, args, result);
     const buf = this.recentCalls.get(tabId) || [];
     buf.push({ key, name, ts: Date.now() });
-    if (buf.length > 6) buf.shift();
+    // Window of recent calls for loop detection. Kept small to catch immediate
+    // thrashing, but large enough that occasional re-reads (post-trim or on
+    // dynamic pages) don't falsely trigger.
+    if (buf.length > 8) buf.shift();
     this.recentCalls.set(tabId, buf);
     return { buf, key };
   }
@@ -576,8 +686,13 @@ export class Agent {
     const counts = new Map();
     for (const e of buf) counts.set(e.key, (counts.get(e.key) || 0) + 1);
     for (const [key, n] of counts) {
+      const toolName = key.split('|')[0];
+      // get_state_digest is intentionally called often for cheap live state on
+      // complex pages (inboxes, tables). Repeated identical calls are normal
+      // and not a loop. Don't let them accumulate toward the repeat detector.
+      if (toolName === 'get_state_digest') continue;
       if (n >= 3 && (!activeKey || key === activeKey)) {
-        return { type: 'repeat', key, name: key.split('|')[0], count: n };
+        return { type: 'repeat', key, name: toolName, count: n };
       }
     }
     // 2. ABAB oscillation in the last 4.
@@ -1217,7 +1332,11 @@ export class Agent {
     const nudges = (this.loopNudges.get(tabId) || 0) + 1;
     this.loopNudges.set(tabId, nudges);
 
-    if (nudges >= 8) {
+    // Bumped from 8 to 12. Gives the agent more recovery chances after context
+    // trims (when it legitimately re-explores using get_state_digest or re-reads
+    // after losing detailed history in the summary). Still stops real infinite
+    // loops reasonably quickly.
+    if (nudges >= 12) {
       this._clearLoopState(tabId);
       const desc = loop.type === 'repeat'
         ? `the same call to ${loop.name}`
@@ -2020,6 +2139,25 @@ If the input still won't accept typing, the element may need a prior click_ax to
         messages.push({ role: 'assistant', content: stopMessage });
         onUpdate('text', { content: stopMessage });
         onUpdate('error', { message: 'Stuck in a loop. Stopped.' });
+
+        this._logDebug({
+          type: 'loop_stop',
+          tabId,
+          message: stopMessage,
+          loop: loopCheck,
+          coordLoop: coordCheck,
+          ts: Date.now()
+        });
+
+        // Auto-save rich bundle to debug-logs folder (no copy-paste needed)
+        try {
+          chrome.runtime.sendMessage({
+            action: 'save_debug_dump',
+            tabId,
+            reason: 'loop_stop'
+          }).catch(() => {});
+        } catch {}
+
         this._clearLoopState(tabId);
         this._persist(tabId);
         return { action: 'return', value: stopMessage };
@@ -3363,13 +3501,13 @@ If the input still won't accept typing, the element may need a prior click_ax to
       this.persistTimers.delete(tabId);
       const messages = this.conversations.get(tabId);
       if (!messages) return;
-      const mode = this.conversationModes.get(tabId) || 'ask';
+      const mode = this.conversationModes.get(tabId) || 'act';
       const conversationId = this.conversationIds.get(tabId) || null;
       const progressLedger = this.progressLedgers.get(tabId) || [];
       const progressSession = this.progressSessions.get(tabId) || null;
       try {
         chrome.storage.session.set({
-          [this._convKey(tabId)]: { mode, messages, conversationId, progressLedger, progressSession },
+          [this._convKey(tabId)]: { mode, messages, conversationId, progressLedger, progressSession, abortReason: this.abortFlags.get(tabId) ? 'user' : undefined },
         }).catch(() => {});
       } catch (e) { /* ignore */ }
     }, 300);
@@ -3891,12 +4029,12 @@ If the input still won't accept typing, the element may need a prior click_ax to
   _refreshSystemPrompts() {
     for (const [tabId, messages] of this.conversations) {
       if (!messages || messages[0]?.role !== 'system') continue;
-      const mode = this.conversationModes.get(tabId) || 'ask';
+      const mode = this.conversationModes.get(tabId) || 'act';
       messages[0].content = this._buildSystemPrompt(mode);
     }
   }
 
-  getConversation(tabId, mode = 'ask') {
+  getConversation(tabId, mode = 'act') {
     if (!this.conversations.has(tabId)) {
       this.conversations.set(tabId, [
         { role: 'system', content: this._buildSystemPrompt(mode) },
@@ -3951,8 +4089,6 @@ If the input still won't accept typing, the element may need a prior click_ax to
     this._cancelPendingPlans(tabId, 'conversation cleared');
     this.conversations.delete(tabId);
     this.progressLedgers.delete(tabId);
-    this.progressPageScopes.delete(tabId);
-    this.progressSessions.delete(tabId);
     this.conversationModes.delete(tabId);
     this.conversationIds.delete(tabId);
     this._lastInputTokens.delete(tabId);
@@ -4113,7 +4249,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
     const replace = !!args?.replace;
     // Hard cap per-pad at ~8k chars to prevent it from eating the whole
     // context budget. Older lines get trimmed off the top when we hit it.
-    const MAX_BODY = 8000;
+    const MAX_BODY = 32000;
     let nextBody = replace ? text : (currentBody ? `${currentBody}\n${text}` : text);
     if (nextBody.length > MAX_BODY) {
       nextBody = '[...older scratchpad lines dropped — pad is full, consider compacting with replace:true]\n' + nextBody.slice(nextBody.length - MAX_BODY + 100);
@@ -5051,7 +5187,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
   }
 
   _shouldBlockDoneForProgress(tabId) {
-    if ((this.conversationModes.get(tabId) || 'ask') !== 'act') return false;
+    if ((this.conversationModes.get(tabId) || 'act') !== 'act') return false;
     return this._currentTaskProgressRows(tabId).length > 0;
   }
 
@@ -5296,11 +5432,11 @@ If the input still won't accept typing, the element may need a prior click_ax to
     const progressMsg = progressIdx >= 0 ? messages[progressIdx] : null;
 
     // Keep last N messages verbatim. Agents doing heavy tool work (scraping,
-    // batch downloads) burn messages fast — each tool call is 2 messages
-    // (assistant + tool result), so 30 ≈ last 15 tool turns. 16 was too tight
-    // for long-horizon tasks and caused the model to "forget" outcomes from
-    // ~8 steps back (e.g. the file list from list_downloads).
-    const keepRecent = 30;
+    // batch downloads, email processing) burn messages fast — each tool call is 2 messages
+    // (assistant + tool result). Increased to retain more verbatim history across
+    // context trims for long stateful tasks (e.g. processing many inbox items).
+    // After trim the model relies more on recent + pinned ledger/digest.
+    const keepRecent = 50;
     // Exclude the pinned original task from both summary and recent slices.
     const afterPin = originalTaskIdx >= 0 ? originalTaskIdx + 1 : 1;
     const recentStart = Math.max(afterPin, messages.length - keepRecent);
@@ -5456,8 +5592,13 @@ If the input still won't accept typing, the element may need a prior click_ax to
     // Rebuild: system + pinned original task + summary + recent.
     // The pinned task keeps the model anchored to what was asked, while
     // the summary + recent slice preserves progress toward it.
-    const summaryMsg = { role: 'user', content: `[Context window was trimmed to stay within budget. Your ORIGINAL TASK is the user message above — keep working on it. ${summaryText}]` };
-    const summaryAck = { role: 'assistant', content: 'Understood. I\'ll continue working on the original task.' };
+    const summaryMsg = { role: 'user', content: `[Context window was trimmed to stay within budget. Your ORIGINAL TASK is the user message above — keep working on it. ${summaryText}
+
+IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rely on these pinned items that survive trims:
+- Your scratchpad (use scratchpad_write to record key facts).
+- Progress ledger (for any repeated-item work such as processing emails, use progress_update to mark items done/pending and progress_read to consult it).
+- Page digest (call get_state_digest often for cheap orientation on complex pages like inboxes).` };
+    const summaryAck = { role: 'assistant', content: 'Understood. I\'ll continue working on the original task, using the pinned ledger, scratchpad and digest for state.' };
 
     messages.length = 0;
     messages.push(systemMsg);
@@ -5472,7 +5613,35 @@ If the input still won't accept typing, the element may need a prior click_ax to
     // Arm the hysteresis cooldown: skip soft triggers for the next 2 steps.
     this._compactCooldown.set(tabId, 2);
 
+    // After a context trim the model's working memory has changed (detailed history
+    // replaced by summary). Clear the loop-detection buffer so pre-trim repeats
+    // (e.g. "I already read the inbox top") don't immediately count as "stuck"
+    // in the new smaller context. This is especially important for long tasks
+    // like email sorting where the agent legitimately re-orients with get_state_digest.
+    this._clearLoopState(tabId);
+
     console.log(`[WebBrain] Context trimmed for tab ${tabId}: ${oldMessages.length} old messages → summary. ${messages.length} messages remain.`);
+
+    // Rich debug logging for the debugging suite
+    this._logDebug({
+      type: 'context_compacted',
+      tabId,
+      summarized: oldMessages.length,
+      remaining: messages.length,
+      tokens: usedTokens || null,
+      budget: tokenBudget,
+      reason: tooManyTokens ? 'token_budget' : (tooManyMessages ? 'message_count' : 'char_count'),
+      ts: Date.now()
+    });
+
+    // Auto-save on compaction so we capture state right before the model loses history
+    try {
+      chrome.runtime.sendMessage({
+        action: 'save_debug_dump',
+        tabId,
+        reason: 'context_compacted'
+      }).catch(() => {});
+    } catch {}
 
     // Surface the auto-compaction to the user (side panel renders an inline
     // "Context automatically compacted" note). Best-effort — never let a UI
@@ -6414,7 +6583,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
     if (name === 'done') {
       const outcome = normalizeDoneOutcome(args?.outcome);
       // In act mode, require a verification screenshot + page info before completing.
-      const mode = this.conversationModes.get(tabId) || 'ask';
+      const mode = this.conversationModes.get(tabId) || 'act';
       if (mode === 'act') {
         try {
           // done() short-circuits the tool loop, so a verification screenshot
@@ -9315,7 +9484,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
    * Continue processing from where we left off (after max steps).
    * Adds a "please continue" user message and resumes the agent loop.
    */
-  async continueProcessing(tabId, onUpdate = () => {}, mode = 'ask') {
+  async continueProcessing(tabId, onUpdate = () => {}, mode = 'act') {
     return this.processMessage(tabId, 'Please continue from where you left off.', onUpdate, mode);
   }
 
@@ -9338,6 +9507,43 @@ If the input still won't accept typing, the element may need a prior click_ax to
 
   getDebugLog() {
     return this._debugLog;
+  }
+
+  /**
+   * Rich snapshot for the debug folder / debugging suite.
+   * Called by sidepanel when building bundles.
+   */
+  getDebugSnapshot(tabId) {
+    const loopBuf = this.recentCalls.get(tabId) || [];
+    const state = this.pageStates.get(tabId) || {};
+    return {
+      tabId,
+      loopBuffer: loopBuf.slice(-10),
+      loopNudges: this.loopNudges.get(tabId) || 0,
+      pageState: {
+        hasDigest: !!state.digest,
+        digestPreview: state.digest ? state.digest.slice(0, 200) : null,
+        tables: (state.tables || []).length,
+        lastRegion: state.lastRegion || null
+      },
+      hasProgressLedger: !!this.progressSessions.get(tabId),
+      debugLogLength: this._debugLog.length,
+      ts: Date.now()
+    };
+  }
+
+  // ── Error log for debugging (CDP failures, lastError, empty outputs, etc.) ─
+  logError(kind, details = {}) {
+    const entry = { ts: Date.now(), timestamp: new Date().toISOString(), kind, ...details };
+    this._errorLog.push(entry);
+    if (this._errorLog.length > this._errorLogMax) {
+      this._errorLog.splice(0, this._errorLog.length - this._errorLogMax);
+    }
+    console.warn(`[Doll Error] ${kind}`, details);
+  }
+
+  getRecentErrors(limit = 30) {
+    return [...this._errorLog].slice(-limit);
   }
 
   clearDebugLog() {
@@ -9493,7 +9699,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
   }
   // ─────────────────────────────────────────────────────────────────────
 
-  async processMessage(tabId, userMessage, onUpdate = () => {}, mode = 'ask') {
+  async processMessage(tabId, userMessage, onUpdate = () => {}, mode = 'act') {
     if (this._runningTabs.has(tabId)) {
       throw new Error('An agent run is already in progress for this tab.');
     }
@@ -9503,6 +9709,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
     } finally {
       this.currentCostState.delete(tabId);
       this._runningTabs.delete(tabId);
+      this._clearLoopState(tabId);
     }
   }
 
@@ -9771,8 +9978,72 @@ If the input still won't accept typing, the element may need a prior click_ax to
           continue; // give the model one more turn to summarize
         }
         // Second empty in a row — give up with a transparent message.
-        finalResponse = '[Agent emitted no output and no tool call, even after a recovery nudge. This usually means the task exceeded the current model\'s capability or context budget. Try a stronger model, raise the step limit in settings, or break the task into smaller parts.]';
-        _traceStatus = 'empty_output';
+        // Attempt automated diagnosis and remediation before giving up.
+          try {
+            const diagnosticContext = {
+              provider,
+              promptSize: this._lastEstCharsAtReport.get(tabId) || 0,
+              contextWindow: provider?.contextWindow || 0,
+              promptTier: provider?.promptTier || 'mid',
+              maxTokens: (provider?.supportsTools ? 8192 : 4096),
+              steps,
+              maxSteps: this.maxSteps,
+              lastContent: (result?.content || '').slice(0, 200),
+              hasToolCalls: !!(result?.toolCalls && result.toolCalls.length),
+              usage: result?.usage || null,
+              messages,
+              error: null,
+            };
+            const diagnosis = diagnoseEmptyOutput(diagnosticContext);
+            const report = formatDiagnosticReport(diagnosis, diagnosticContext);
+            this.logError('empty_output_after_nudge', {
+              steps,
+              lastContent: (result?.content || '').slice(0, 200),
+              hasToolCalls: !!(result?.toolCalls && result.toolCalls.length),
+              provider: provider?.name || provider?.config?.providerName,
+              diagnosis: diagnosis.category,
+              confidence: diagnosis.confidence,
+              report,
+            });
+            onUpdate('warning', { message: `Diagnostic: ${report}` });
+            // Try to apply remediations and retry once
+            try {
+              const remediationResult = await runRemediationChain(diagnosis, this, tabId);
+              if (remediationResult.success) {
+                onUpdate('warning', { message: `Auto-remediation applied: ${remediationResult.applied.details}. Retrying...` });
+                // Re-fetch provider after remediation (e.g., after switching to compact prompt)
+                const retryProvider = this.providerManager?.getActive() || provider;
+                // Retry the LLM call with remediations applied
+                try {
+                  const useTools = retryProvider.supportsTools;
+                  const isLocalProv = retryProvider && (retryProvider.config?.category === 'local' || ['lmstudio','ollama','jan','vllm','sglang','llamacpp'].includes(String(retryProvider.config?.providerName || retryProvider.name).toLowerCase()));
+                  const maxOut = isLocalProv ? 8192 : 4096;
+                  const chatOpts = { tools: useTools ? tools : undefined, temperature: plannerTemperature, maxTokens: maxOut };
+                  const prunedMessages = this._pruneOldImages(messages, retryProvider);
+                  result = await this._chatWithCostAllowance(retryProvider, prunedMessages, chatOpts, costState);
+                  // If retry produced output or tool calls, continue the loop
+                  if (result?.content || result?.toolCalls?.length) {
+                    continue;
+                  }
+                } catch (retryError) {
+                  this._logDebug({ type: 'remediation_retry_failed', step: steps, error: retryError.message });
+                }
+              } else {
+                this._logDebug({ type: 'all_remediations_failed', step: steps, results: remediationResult.results });
+              }
+            } catch (remediationError) {
+              this._logDebug({ type: 'remediation_chain_threw', step: steps, error: remediationError.message });
+            }
+            // Always show the diagnostic report, even when remediation fails
+            messages.push({ role: 'assistant', content: report });
+            onUpdate('warning', { message: report });
+            break;
+            } catch (diagError) {
+            this.logError('diagnostic_failure', { error: diagError.message });
+          }
+          // Fallback: original error message
+          finalResponse = '[Agent emitted no output and no tool call, even after a recovery nudge. This usually means the task exceeded the current model\'s capability or context budget. Try a stronger model, raise the step limit in settings, or break the task into smaller parts.]';
+          _traceStatus = 'empty_output';
         messages.push({ role: 'assistant', content: finalResponse });
         onUpdate('warning', { message: finalResponse });
         break;
@@ -9818,7 +10089,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
   /**
    * Process a message with streaming output.
    */
-  async processMessageStream(tabId, userMessage, onUpdate = () => {}, mode = 'ask') {
+  async processMessageStream(tabId, userMessage, onUpdate = () => {}, mode = 'act') {
     if (this._runningTabs.has(tabId)) {
       throw new Error('An agent run is already in progress for this tab.');
     }
@@ -9828,6 +10099,7 @@ If the input still won't accept typing, the element may need a prior click_ax to
     } finally {
       this.currentCostState.delete(tabId);
       this._runningTabs.delete(tabId);
+      this._clearLoopState(tabId);
     }
   }
 
@@ -10025,7 +10297,132 @@ If the input still won't accept typing, the element may need a prior click_ax to
             this._persist(tabId);
             continue;
           }
+          // Attempt automated diagnosis and remediation before giving up.
+          try {
+            const diagnosticContext = {
+              provider,
+              promptSize: this._lastEstCharsAtReport.get(tabId) || 0,
+              contextWindow: provider?.contextWindow || 0,
+              promptTier: provider?.promptTier || 'mid',
+              maxTokens: (provider?.supportsTools ? 8192 : 4096),
+              steps,
+              maxSteps: this.maxSteps,
+              lastContent: (fullText || '').slice(0, 200),
+              hasToolCalls: false,
+              usage: null,
+              messages,
+              error: null,
+            };
+            const diagnosis = diagnoseEmptyOutput(diagnosticContext);
+            const report = formatDiagnosticReport(diagnosis, diagnosticContext);
+            this.logError('empty_output_after_nudge_stream', {
+              steps,
+              fullText: (fullText || '').slice(0, 200),
+              diagnosis: diagnosis.category,
+              confidence: diagnosis.confidence,
+              report,
+            });
+            onUpdate('warning', { message: `Diagnostic: ${report}` });
+            // Try to apply remediations and retry once
+            try {
+              const remediationResult = await runRemediationChain(diagnosis, this, tabId);
+              if (remediationResult.success) {
+                onUpdate('warning', { message: `Auto-remediation applied: ${remediationResult.applied.details}. Retrying...` });
+                // Re-fetch provider after remediation (e.g., after switching to compact prompt)
+                const retryProvider = this.providerManager?.getActive() || provider;
+                // Retry the LLM call with remediations applied (streaming path)
+                try {
+                  const useTools = retryProvider.supportsTools;
+                  const isLocalProv = retryProvider && (retryProvider.config?.category === 'local' || ['lmstudio','ollama','jan','vllm','sglang','llamacpp'].includes(String(retryProvider.config?.providerName || retryProvider.name).toLowerCase()));
+                  const maxOut = isLocalProv ? 8192 : 4096;
+                  const chatOpts = { tools: useTools ? tools : undefined, temperature: plannerTemperature, maxTokens: maxOut };
+                  const prunedMessages = this._pruneOldImages(messages, retryProvider);
+                  // Retry by continuing the loop with the remediated provider
+                  emptyOutputRecoveryAttempted = false;
+                  // Update the provider reference for the next iteration
+                  // (the while loop will call provider.chatStream with the updated provider)
+                  // Since provider is a const, we can't reassign it. Instead, we'll do a direct streaming retry:
+                  let retryFullText = '';
+                  let toolCallsAccumulator = {};
+                  let hasToolCalls = false;
+                  for await (const chunk of retryProvider.chatStream(prunedMessages, chatOpts)) {
+                    if (chunk.type === 'text') {
+                      retryFullText += chunk.content;
+                      onUpdate('text_delta', { content: chunk.content });
+                    } else if (chunk.type === 'usage') {
+                      const costMsg = await this._recordCostUsage(retryProvider, chunk.usage, costState);
+                      costStopMessage = costMsg || costStopMessage;
+                    } else if (chunk.type === 'tool_call') {
+                      hasToolCalls = true;
+                      const calls = Array.isArray(chunk.content) ? chunk.content : [];
+                      for (const tc of calls) {
+                        const idx = tc.index ?? 0;
+                        if (!toolCallsAccumulator[idx]) {
+                          toolCallsAccumulator[idx] = { id: '', function: { name: '', arguments: '' } };
+                        }
+                        if (tc.id) toolCallsAccumulator[idx].id = tc.id;
+                        if (tc.function?.name) toolCallsAccumulator[idx].function.name += tc.function.name;
+                        if (tc.function?.arguments) toolCallsAccumulator[idx].function.arguments += tc.function.arguments;
+                      }
+                    } else if (chunk.type === 'tool_call_start') {
+                      hasToolCalls = true;
+                      const idx = Object.keys(toolCallsAccumulator).length;
+                      toolCallsAccumulator[idx] = {
+                        id: chunk.content?.id || '',
+                        function: { name: chunk.content?.name || '', arguments: '' },
+                      };
+                    } else if (chunk.type === 'tool_call_delta') {
+                      const idx = Object.keys(toolCallsAccumulator).length - 1;
+                      if (idx >= 0 && toolCallsAccumulator[idx]) {
+                        toolCallsAccumulator[idx].function.arguments += String(chunk.content ?? '');
+                      }
+                    } else if (chunk.type === 'done') {
+                      break;
+                    }
+                  }
+                  retryFullText = Agent._stripReasoningTags(retryFullText);
+                  if (hasToolCalls) {
+                    if (costStopMessage) {
+                      messages.push({ role: 'assistant', content: costStopMessage });
+                      onUpdate('warning', { message: costStopMessage });
+                    }
+                    messages.push({ role: 'assistant', toolCalls: Object.values(toolCallsAccumulator) });
+                    onUpdate('tool_calls', { toolCalls: Object.values(toolCallsAccumulator) });
+                    this._persist(tabId);
+                    continue;
+                  }
+                  if (!retryFullText || !retryFullText.trim()) {
+                    // Retry still produced empty output — break to diagnostic fallback
+                  } else {
+                    messages.push({ role: 'assistant', content: retryFullText });
+                    onUpdate('text_delta', { content: retryFullText });
+                    if (costStopMessage) {
+                      onUpdate('text_delta', { content: `\n\n${costStopMessage}` });
+                      retryFullText = `${retryFullText}\n\n${costStopMessage}`;
+                    }
+                    this._persist(tabId);
+                    return finish(retryFullText);
+                  }
+                } catch (retryError) {
+                  this._logDebug({ type: 'remediation_retry_failed', step: steps, error: retryError.message });
+                }
+              } else {
+                this._logDebug({ type: 'all_remediations_failed', step: steps, results: remediationResult.results });
+              }
+            } catch (remediationError) {
+              this._logDebug({ type: 'remediation_chain_threw', step: steps, error: remediationError.message });
+            }
+            // Always show the diagnostic report, even when remediation fails
+            messages.push({ role: 'assistant', content: report });
+            onUpdate('warning', { message: report });
+            this._persist(tabId);
+            return finish(report, 'empty_output');
+          } catch (diagError) {
+            this.logError('diagnostic_failure', { error: diagError.message });
+          }
+          // Fallback: original error message
           const failMsg = '[Agent emitted no output and no tool call, even after a recovery nudge. This usually means the task exceeded the current model\'s capability or context budget. Try a stronger model, raise the step limit in settings, or break the task into smaller parts.]';
+          this.logError('empty_output_after_nudge_stream', { steps, fullText: (fullText || '').slice(0, 200) });
           messages.push({ role: 'assistant', content: failMsg });
           onUpdate('warning', { message: failMsg });
           this._persist(tabId);

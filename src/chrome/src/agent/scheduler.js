@@ -720,7 +720,7 @@ export class ScheduledJobManager {
     if (existing && ['running', 'needs_user_input'].includes(existing.status)) {
       const tabId = existing.tabId || existing.target?.tabId;
       if (tabId != null) {
-        try { this.agent.abort(tabId); } catch {}
+        try { this.agent.abort(tabId); this.agent._clearLoopState(tabId); } catch {}
       }
     }
     const job = await this._updateJobIf(jobId, (prev) => (
@@ -743,7 +743,7 @@ export class ScheduledJobManager {
     if (existing && ['running', 'needs_user_input'].includes(existing.status)) {
       const tabId = existing.tabId || existing.target?.tabId;
       if (tabId != null) {
-        try { this.agent.abort(tabId); } catch {}
+        try { this.agent.abort(tabId); this.agent._clearLoopState(tabId); } catch {}
       }
     }
     return { ok: removed };
@@ -773,7 +773,7 @@ export class ScheduledJobManager {
       return updated;
     });
     if (liveTabId != null) {
-      try { this.agent.abort(liveTabId); } catch {}
+      try { this.agent.abort(liveTabId); this.agent._clearLoopState(liveTabId); } catch {}
     }
     if (job) this._emit(job, 'paused');
     return { ok: !!job, job: summarizeScheduledJob(job) };
@@ -861,7 +861,7 @@ export class ScheduledJobManager {
     await Promise.all(alarmsToClear.map((id) => this._clearAlarm(id)));
     await Promise.all(alarmsToSet.map((job) => this._setAlarm(job)));
     for (const liveTabId of tabIdsToAbort) {
-      try { this.agent.abort(liveTabId); } catch {}
+      try { this.agent.abort(liveTabId); this.agent._clearLoopState(liveTabId); } catch {}
     }
   }
 
@@ -1133,6 +1133,7 @@ export class ScheduledJobManager {
     } finally {
       this._runningTabs.delete(tabId);
       this.agent.clearScheduledRunPolicy(tabId);
+      this.agent._clearLoopState(tabId);
       this.hideIndicator(tabId);
     }
   }

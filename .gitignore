@@ -62,3 +62,9 @@ dist/
 webbrain-*.zip
 
 
+
+# Local debug artifacts (can contain conversation history, page content, LLM traces)
+debug-logs/
+
+# Local scratch TODOs
+TODO_LOCAL.md

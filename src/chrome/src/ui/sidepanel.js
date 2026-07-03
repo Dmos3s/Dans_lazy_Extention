@@ -347,6 +347,8 @@ const SLASH_COMMANDS = [
   { value: '/vision', descriptionKey: 'sp.slash.vision' },
   { value: '/ask', descriptionKey: 'sp.slash.ask' },
   { value: '/plan', descriptionKey: 'sp.slash.plan' },
+  { value: '/debug', descriptionKey: 'sp.slash.debug' },
+  { value: '/save-debug', descriptionKey: 'sp.slash.save_debug' },
 ];
 const OUT_OF_BAND_SLASH_COMMANDS = new Set([
   '/help',
@@ -355,6 +357,8 @@ const OUT_OF_BAND_SLASH_COMMANDS = new Set([
   '/screenshot',
   '/export',
   '/verbose',
+  '/debug',
+  '/save-debug',
 ]);
 const SLASH_COMMAND_OPTION_ID_PREFIX = 'slash-command-option-';
 const BUSY_SLASH_NOTICE_COOLDOWN_MS = 3000;
@@ -376,7 +380,7 @@ let queuedTabSwitchMessages = [];
 let isProcessing = false;
 let currentAssistantEl = null;
 let verboseMode = false;
-let agentMode = 'ask'; // 'ask' or 'act'
+let agentMode = 'act'; // 'ask' or 'act'
 let abortRequested = false;
 let recommendationsRequestId = 0;
 let providerSelectionRequestId = 0;
@@ -1498,6 +1502,18 @@ async function init() {
       if (verboseBtn) verboseBtn.classList.toggle('active', verboseMode);
     }
   });
+
+  // Default to Act mode (user preference)
+  setMode(agentMode);
+  if (agentMode === 'act') {
+    // Trigger first-time safety confirmation for Act mode.
+    // If user declines, revert to Ask.
+    ensureActMode().then(ok => {
+      if (!ok && currentTabId != null) {
+        setMode('ask');
+      }
+    }).catch(() => {});
+  }
 }
 
 // Verbose toggle button: persists the choice via the same storage key the
@@ -2179,6 +2195,42 @@ function showBusySlashCommandNotice() {
   addMessage('system', t('sp.slash.busy_only_oob'));
 }
 
+// Helper to save rich debug data directly to disk using the downloads API.
+// Files are written with a "debug-logs/" prefix so they are easy to locate
+// (configure Chrome Downloads location to the debug-logs folder in the project
+// for zero-friction landing in /Users/danmoses/Dans_lazy_Extention/debug-logs).
+async function saveDebugBundleToDisk(data) {
+  try {
+    const ts = (data.timestamp || new Date().toISOString()).replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `debug-logs/webbrain-debug-${ts}.json`;
+
+    const payload = {
+      ...data,
+      userAgent: navigator.userAgent,
+      extensionVersion: '18.x (local dev)',
+      generatedBy: 'webbrain-sidepanel-debug-dump'
+    };
+
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    await chrome.downloads.download({
+      url,
+      filename,
+      saveAs: false,
+      conflictAction: 'uniquify'
+    });
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    addMessage('system', `Debug bundle saved: <code>${filename}</code>. Look in your Downloads (or the project's debug-logs folder if configured).`);
+  } catch (e) {
+    console.error('[WebBrain] Failed to save debug bundle:', e);
+    addMessage('system', `Auto-save failed: ${e.message || e}. Copy the text from the chat instead.`);
+  }
+}
+
 /**
  * Parse leading slash commands out of the user's message.
  * Returns the cleaned text (empty string if fully consumed).
@@ -2188,6 +2240,114 @@ async function parseSlashCommands(text, tabId = currentTabId) {
   // /help — list all available slash commands
   if (/^\/help\b\s*/i.test(text)) {
     addMessage('system', t('sp.help_html'));
+    return '';
+  }
+
+  // /errors — dump recent captured errors (CDP, lastError, empty outputs, etc.) for debugging
+  if (/^\/errors\b\s*/i.test(text)) {
+    const res = await sendToBackground('get_recent_errors', { tabId });
+    const errs = res?.errors || [];
+    if (currentTabId !== tabId) return '';
+    if (!errs.length) {
+      addMessage('system', 'No recent errors captured.');
+    } else {
+      const lines = errs.map(e => `[${new Date(e.ts || e.timestamp).toLocaleTimeString()}] ${e.kind || e.type || 'error'}: ${JSON.stringify(e).slice(0, 300)}`).join('\n');
+      addMessage('system', `<pre style="white-space:pre-wrap;font-size:12px;">${escapeHtml(lines)}</pre>`);
+    }
+    return '';
+  }
+
+  // /debug — comprehensive diagnostic dump for troubleshooting (loop, compaction, LLM calls, state)
+  if (/^\/debug\b\s*/i.test(text)) {
+    const debugRes = await sendToBackground('get_debug_log', { tabId });
+    const errsRes = await sendToBackground('get_recent_errors', { tabId });
+    const log = debugRes?.log || [];
+    const errs = errsRes?.errors || [];
+
+    let out = '=== WebBrain Debug Dump ===\n';
+    out += `Time: ${new Date().toISOString()}\n`;
+    out += `Tab: ${tabId}\n`;
+    out += `Debug entries: ${log.length}\n`;
+    out += `Recent errors: ${errs.length}\n\n`;
+
+    if (errs.length) {
+      out += '--- Recent Errors ---\n';
+      errs.slice(-5).forEach(e => {
+        out += `[${new Date(e.ts || Date.now()).toLocaleTimeString()}] ${e.kind || e.type}: ${JSON.stringify(e).slice(0,200)}\n`;
+      });
+      out += '\n';
+    }
+
+    if (log.length) {
+      out += '--- Last LLM / Tool Activity (most recent first) ---\n';
+      log.slice(-8).reverse().forEach((entry, i) => {
+        const ts = entry.ts ? new Date(entry.ts).toLocaleTimeString() : '?';
+        if (entry.type === 'llm_request') {
+          out += `[${ts}] LLM request step ${entry.step} provider=${entry.provider}\n`;
+        } else if (entry.type === 'llm_response') {
+          const preview = (entry.content || '').slice(0, 120).replace(/\n/g, ' ');
+          out += `[${ts}] LLM resp step ${entry.step}: ${preview}${entry.content && entry.content.length > 120 ? '...' : ''}\n`;
+          if (entry.toolCalls && entry.toolCalls.length) out += `  tools: ${entry.toolCalls.map(t => t.function?.name).join(', ')}\n`;
+        } else if (entry.type === 'error') {
+          out += `[${ts}] ERROR step ${entry.step}: ${entry.error}\n`;
+        } else {
+          out += `[${ts}] ${entry.type || 'entry'}: ${JSON.stringify(entry).slice(0,150)}\n`;
+        }
+      });
+    } else {
+      out += 'No debug log entries yet. Run a task first.\n';
+    }
+
+    out += '\n--- Tips ---\n';
+    out += '- Enable full Tracing in Settings for complete per-run records (IndexedDB).\n';
+    out += '- Run /export to save the conversation.\n';
+    out += '- For deeper inspection: open service worker DevTools (chrome://extensions > this ext > service worker).\n';
+    out += '- Shift+click the input or certain areas may dump more to browser console.\n';
+
+    if (currentTabId !== tabId) return '';
+    addMessage('system', `<pre style="white-space:pre-wrap; font-size:11px; max-height:400px; overflow:auto; background:#111; color:#0f0; padding:8px; border-radius:4px;">${escapeHtml(out)}</pre>`);
+
+    // Also dump to DevTools console for easy copy
+    try {
+      console.groupCollapsed('%c[WebBrain /debug dump]', 'color:#0f0');
+      console.log(out);
+      console.groupEnd();
+    } catch {}
+
+    // === NEW: Automatically save rich debug bundle to disk ===
+    // This will download a JSON file. To have it land directly in the project
+    // debug-logs/ folder without manual moving:
+    //   chrome://settings/downloads → set Location to the debug-logs folder.
+    // Fetch extra internal state
+    const snapRes = await sendToBackground('get_debug_snapshot', { tabId });
+    saveDebugBundleToDisk({
+      timestamp: new Date().toISOString(),
+      tabId,
+      debugLog: log,
+      recentErrors: errs,
+      snapshot: snapRes || null,
+      note: "Generated by /debug. Contains LLM activity, errors, loop state, page digest, etc."
+    });
+
+    return '';
+  }
+
+  // /save-debug — explicitly save a full debug bundle (no chat output, just the file)
+  if (/^\/save-debug\b\s*/i.test(text)) {
+    const debugRes = await sendToBackground('get_debug_log', { tabId });
+    const errsRes = await sendToBackground('get_recent_errors', { tabId });
+    const log = debugRes?.log || [];
+    const errs = errsRes?.errors || [];
+
+    const snapRes = await sendToBackground('get_debug_snapshot', { tabId });
+    await saveDebugBundleToDisk({
+      timestamp: new Date().toISOString(),
+      tabId,
+      debugLog: log,
+      recentErrors: errs,
+      snapshot: snapRes || null,
+      note: "Generated by /save-debug. Full diagnostic snapshot."
+    });
     return '';
   }
 

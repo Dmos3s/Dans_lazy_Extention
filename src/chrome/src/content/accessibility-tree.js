@@ -464,6 +464,35 @@
         walk(child, nextDepth, opts, lines);
       }
     }
+
+    // Pierce open shadow roots so Shadow DOM UI (Gmail compose, dialogs, etc.)
+    // is visible in the accessibility tree.
+    if (el.shadowRoot && depth < opts.maxDepth) {
+      try {
+        for (const child of el.shadowRoot.children) {
+          opts.currentDepth = depth;
+          walk(child, depth, opts, lines);
+        }
+      } catch (e) {}
+    }
+
+    // Pierce same-origin iframes so embedded pages (Workday, Stripe widgets,
+    // embedded forms) are visible in the accessibility tree. Cross-origin
+    // iframes silently fail due to browser security — the agent should use
+    // iframe_read / iframe_click / iframe_type for those.
+    if (el.tagName && el.tagName.toLowerCase() === 'iframe' && depth < opts.maxDepth) {
+      try {
+        const frameDoc = el.contentDocument || (el.contentWindow && el.contentWindow.document);
+        if (frameDoc && frameDoc.body) {
+          lines.push(`${indent}[iframe: "${el.id || el.name || el.src || 'unnamed'}"]`);
+          walk(frameDoc.body, depth, opts, lines);
+          lines.push(`[/iframe]`);
+        }
+      } catch (e) {
+        // Cross-origin iframe — silently skip. The agent should use
+        // iframe_read / iframe_click / iframe_type for cross-origin frames.
+      }
+    }
   }
 
   // ── Public: build the tree ──────────────────────────────────────────────

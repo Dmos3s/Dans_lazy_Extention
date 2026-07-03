@@ -836,7 +836,7 @@ async function handleMessage(msg, sender) {
     case 'chat': {
       const tabId = msg.tabId || sender.tab?.id;
       if (!tabId) throw new Error('No tab ID');
-      const mode = msg.mode || 'ask';
+      const mode = msg.mode || 'act';
 
       // /allow-api flag is per-conversation. The sidebar tracks it locally
       // but sends it on every chat call so the agent stays in sync after a
@@ -879,7 +879,7 @@ async function handleMessage(msg, sender) {
     case 'chat_stream': {
       const tabId = msg.tabId || sender.tab?.id;
       if (!tabId) throw new Error('No tab ID');
-      const mode = msg.mode || 'ask';
+      const mode = msg.mode || 'act';
 
       if (msg.apiMutationsAllowed) agent.setApiMutationsAllowed(tabId, true);
 
@@ -905,7 +905,7 @@ async function handleMessage(msg, sender) {
     case 'continue': {
       const tabId = msg.tabId || sender.tab?.id;
       if (!tabId) throw new Error('No tab ID');
-      const mode = msg.mode || 'ask';
+      const mode = msg.mode || 'act';
 
       sendIndicatorMessage(tabId, 'WB_SHOW_AGENT_INDICATORS');
       try {
@@ -1045,9 +1045,51 @@ async function handleMessage(msg, sender) {
       return { log: agent.getDebugLog() };
     }
 
+    case 'get_debug_snapshot': {
+      return agent.getDebugSnapshot(msg?.tabId);
+    }
+
+    case 'get_recent_errors': {
+      return { errors: agent.getRecentErrors(msg?.limit || 30) };
+    }
+
     case 'clear_debug_log': {
       agent.clearDebugLog();
       return { ok: true };
+    }
+
+    case 'save_debug_dump': {
+      // Background-triggered dump (used for auto on loop/compaction if wired)
+      const debugLog = agent.getDebugLog();
+      const snapshot = agent.getDebugSnapshot(msg?.tabId);
+      const errors = agent.getRecentErrors(20);
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const filename = `debug-logs/webbrain-debug-${ts}-auto-${msg?.reason || 'event'}.json`;
+
+      const payload = {
+        timestamp: new Date().toISOString(),
+        reason: msg?.reason || 'manual',
+        tabId: msg?.tabId,
+        debugLog: debugLog.slice(-50),
+        snapshot,
+        recentErrors: errors,
+        auto: true
+      };
+
+      const json = JSON.stringify(payload, null, 2);
+      const dataUrl = 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(json)));
+
+      try {
+        await chrome.downloads.download({
+          url: dataUrl,
+          filename,
+          saveAs: false,
+          conflictAction: 'uniquify'
+        });
+      } catch (e) {
+        console.warn('[WebBrain] Auto debug dump download failed:', e.message);
+      }
+      return { ok: true, filename };
     }
 
     // --- Provider Management ---

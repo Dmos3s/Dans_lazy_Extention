@@ -96,7 +96,12 @@ const ADAPTERS = [
 - The body is a contenteditable div (rich text), not a textarea. Click into it before typing.
 - Sending: the "Send" button is bottom-left of the compose window; "Send + Schedule" arrow is next to it for scheduled send.
 - Search uses operators: from:, to:, subject:, has:attachment, before:YYYY/MM/DD.
-- Threads collapse old messages — click "Show trimmed content" or the message header to expand.`,
+- Threads collapse old messages — click "Show trimmed content" or the message header to expand.
+- Bulk inbox processing (sorting, labeling, archiving many emails): Gmail lists are virtualized. Always start with get_state_digest, then extract_data for the visible rows. Use progress_update + progress_read to track every email you handle so you don't re-process the same ones after a context trim. Work in small batches and update the ledger after each item.
+
+- CRITICAL: progress_update unique IDs — the ledger generates row IDs from the `target` field. If you call `progress_update({items: [{action: "move", target: "BidNet Direct email"}]})` for every email from that sender, ALL emails get the SAME ledger ID, and after compaction the ledger cannot distinguish which specific emails were processed. Instead: use the **email subject line** or the **email URL** (from extract_data result, e.g. `#inbox/ABC123`) as the `id` field. Example: `progress_update({items: [{id: "Invoice for June", action: "move", status: "processed"}, {id: "Weekly digest", action: "move", status: "processed"}]})`. Use `progress_read` after any context trim to check which emails are already processed before re-selecting.
+
+- Moving emails to a folder: Check the checkbox next to each target email (or "Select all" at top), then click the "Move to" icon (folder-with-arrow, usually in the top toolbar). A popup appears listing existing labels/folders. Click the folder name. If the folder does not exist, type the folder name and press Enter to create it. The emails disappear from the current view and reappear under that folder. To verify: navigate to the folder (click it in the left sidebar or search `label:foldername`) and confirm the emails are there. For "move BidNet Direct emails" type requests: search `from:bidnet` or `from:team@fusehq.cloud` to find them first, then select and move.`,
   },
   {
     name: 'google-docs',

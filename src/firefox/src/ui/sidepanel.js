@@ -336,6 +336,7 @@ const SLASH_COMMANDS = [
   { value: '/vision', descriptionKey: 'sp.slash.vision' },
   { value: '/ask', descriptionKey: 'sp.slash.ask' },
   { value: '/plan', descriptionKey: 'sp.slash.plan' },
+  { value: '/debug', descriptionKey: 'sp.slash.debug' },
 ];
 const OUT_OF_BAND_SLASH_COMMANDS = new Set([
   '/help',
@@ -344,6 +345,7 @@ const OUT_OF_BAND_SLASH_COMMANDS = new Set([
   '/screenshot',
   '/export',
   '/verbose',
+  '/debug',
 ]);
 const SLASH_COMMAND_OPTION_ID_PREFIX = 'slash-command-option-';
 const BUSY_SLASH_NOTICE_COOLDOWN_MS = 3000;
@@ -353,7 +355,7 @@ let pendingTabSwitch = null; // tab the user switched to while isProcessing was 
 let isProcessing = false;
 let currentAssistantEl = null;
 let verboseMode = false;
-let agentMode = 'ask'; // 'ask' or 'act'
+let agentMode = 'act'; // 'ask' or 'act'
 let abortRequested = false;
 let recommendationsRequestId = 0;
 let providerSelectionRequestId = 0;
@@ -2098,6 +2100,29 @@ async function parseSlashCommands(text, tabId = currentTabId) {
   if (/^\/reset\b\s*/i.test(text)) {
     await sendToBackground('clear_conversation', { tabId });
     renderClearedConversationForTab(tabId);
+    return '';
+  }
+
+  // /debug — comprehensive diagnostic dump (loop, compaction, LLM activity)
+  if (/^\/debug\b\s*/i.test(text)) {
+    const debugRes = await sendToBackground('get_debug_log', { tabId });
+    const errsRes = await sendToBackground('get_recent_errors', { tabId });
+    const log = debugRes?.log || [];
+    const errs = errsRes?.errors || [];
+    let out = '=== WebBrain Debug Dump ===\nTime: ' + new Date().toISOString() + '\nTab: ' + tabId + '\n';
+    out += 'Debug entries: ' + log.length + '  Errors: ' + errs.length + '\n\n';
+    if (errs.length) {
+      out += '--- Errors ---\n' + errs.slice(-5).map(e => JSON.stringify(e).slice(0,180)).join('\n') + '\n\n';
+    }
+    if (log.length) {
+      out += '--- Recent Activity ---\n' + log.slice(-6).map(e => JSON.stringify(e).slice(0,200)).join('\n') + '\n';
+    } else {
+      out += 'No log yet.\n';
+    }
+    out += '\nEnable Tracing in Settings for full records. Use /export too. Inspect service worker in about:debugging for more.\n';
+    if (currentTabId !== tabId) return '';
+    addMessage('system', '<pre style="white-space:pre-wrap;font-size:11px;background:#111;color:#0f0;padding:6px;">' + escapeHtml(out) + '</pre>');
+    try { console.log('[WebBrain /debug]', out); } catch(e){}
     return '';
   }
 

@@ -18,7 +18,6 @@
     "alarms",
     "unlimitedStorage",
     "offscreen",
-    "privateNetworkAccess",
     "tabCapture",
     "clipboardWrite",
     "clipboardRead"

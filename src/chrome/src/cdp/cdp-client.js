@@ -83,14 +83,16 @@ export class CDPClient {
     }
 
     return new Promise((resolve, reject) => {
-      chrome.debugger.sendCommand({ tabId }, method, params, (result, error) => {
-        if (error) {
-          const msg = error.message || String(error);
-          // Common MV3 gotchas: detached during long operation, or tab navigated away
-          const hint = /detached|not attached|tab closed|disconnected/i.test(msg)
-            ? ' (Debugger session may have been lost — try stopping and restarting the agent.)'
+      chrome.debugger.sendCommand({ tabId }, method, params, (result) => {
+        if (chrome.runtime.lastError) {
+          const msg = chrome.runtime.lastError.message || String(chrome.runtime.lastError);
+          const hint = /detached|not attached|tab closed|disconnected|permission/i.test(msg)
+            ? ' (Debugger session may have been lost, tab navigated, or debugger permission issue — try stopping and restarting the agent. For Input commands this can happen on restricted pages.)'
             : '';
-          reject(new Error(msg + hint));
+          const err = new Error(`CDP ${method} failed: ${msg}${hint}`);
+          // Swallow to avoid "Unchecked runtime.lastError"
+          void chrome.runtime.lastError;
+          reject(err);
           return;
         }
         resolve(result);
@@ -468,7 +470,7 @@ export class CDPClient {
    * Dispatch mouse event.
    */
   async dispatchMouseEvent(tabId, type, x, y, button = 'left') {
-    await this.sendCommand(tabId, 'Input.enable');
+    await this.sendCommand(tabId, 'Input.enable').catch(() => {});
     // Use string button names as required by CDP Input.dispatchMouseEvent.
     // 'buttons' is a bitmask: 1 = left held. clickCount must be 1 on BOTH
     // mousePressed AND mouseReleased for the browser to synthesize a 'click'
@@ -482,19 +484,19 @@ export class CDPClient {
       button: isMove ? 'none' : button,
       buttons: isDown ? 1 : 0,
       clickCount: isMove ? 0 : 1,
-    });
+    }).catch((e) => ({ success: false, error: e.message }));
   }
 
   /**
    * Dispatch key event.
    */
   async dispatchKeyEvent(tabId, type, key, text = '') {
-    await this.sendCommand(tabId, 'Input.enable');
+    await this.sendCommand(tabId, 'Input.enable').catch(() => {});
     return await this.sendCommand(tabId, 'Input.dispatchKeyEvent', {
       type,
       key,
       text: text || key,
-    });
+    }).catch((e) => ({ success: false, error: e.message }));
   }
 
   /**

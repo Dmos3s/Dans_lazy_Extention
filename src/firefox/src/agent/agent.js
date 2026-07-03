@@ -68,14 +68,14 @@ export class Agent {
     this.currentRunId = new Map(); // tabId -> active trace runId
     this.currentCostState = new Map(); // tabId -> active cloud/router cost state
     this.maxSteps = 130; // safety limit for autonomous loops (configurable via settings)
-    this.maxContextMessages = 50; // trim beyond this
+    this.maxContextMessages = 100; // trim beyond this (was 50, doubled for complex tasks)
     this._debugLog = []; // ring buffer for deep verbose (LLM requests/responses)
     this._debugLogMax = 200; // max entries before oldest are dropped
-    this.maxContextChars = 80000; // rough char budget (~20k tokens)
+    this.maxContextChars = 200000; // rough char budget (~50k tokens) (was 80k, increased for complex tasks)
     // Default fraction of the model's context window at which we auto-compact.
     // _contextCompactRatioForWindow tightens this for small context windows and
     // relaxes it for very large ones.
-    this.contextCompactRatio = 0.75;
+    this.contextCompactRatio = 0.85; // was 0.75, increased to delay compaction for complex tasks
     // tabId -> most recent provider-reported input (prompt) token count. Drives
     // the token-aware auto-compaction trigger; updated after each LLM response,
     // reset whenever we compact.
@@ -214,7 +214,7 @@ export class Agent {
 
   async writeScratchpad(tabId, text, options = {}) {
     await this._hydrate(tabId);
-    const mode = options?.mode || this.conversationModes.get(tabId) || 'ask';
+    const mode = options?.mode || this.conversationModes.get(tabId) || 'act';
     this.getConversation(tabId, mode);
     return this._scratchpadWrite(tabId, { text, replace: !!options?.replace });
   }
@@ -483,7 +483,10 @@ export class Agent {
     const key = this._loopCallKey(name, args, result);
     const buf = this.recentCalls.get(tabId) || [];
     buf.push({ key, name, ts: Date.now() });
-    if (buf.length > 6) buf.shift();
+    // Window of recent calls for loop detection. Kept small to catch immediate
+    // thrashing, but large enough that occasional re-reads (post-trim or on
+    // dynamic pages) don't falsely trigger.
+    if (buf.length > 8) buf.shift();
     this.recentCalls.set(tabId, buf);
     return { buf, key };
   }
@@ -493,7 +496,12 @@ export class Agent {
     const counts = new Map();
     for (const e of buf) counts.set(e.key, (counts.get(e.key) || 0) + 1);
     for (const [key, n] of counts) {
-      if (n >= 3 && (!activeKey || key === activeKey)) return { type: 'repeat', key, name: key.split('|')[0], count: n };
+      const toolName = key.split('|')[0];
+      // get_state_digest is intentionally called often for cheap live state on
+      // complex pages (inboxes, tables). Repeated identical calls are normal
+      // and not a loop. Don't let them accumulate toward the repeat detector.
+      if (toolName === 'get_state_digest') continue;
+      if (n >= 3 && (!activeKey || key === activeKey)) return { type: 'repeat', key, name: toolName, count: n };
     }
     if (buf.length >= 4) {
       const last4 = buf.slice(-4);
@@ -940,7 +948,11 @@ export class Agent {
     this.healthyCallsSinceLoop.delete(tabId);
     const nudges = (this.loopNudges.get(tabId) || 0) + 1;
     this.loopNudges.set(tabId, nudges);
-    if (nudges >= 8) {
+    // Bumped from 8 to 12. Gives the agent more recovery chances after context
+    // trims (when it legitimately re-explores using get_state_digest or re-reads
+    // after losing detailed history in the summary). Still stops real infinite
+    // loops reasonably quickly.
+    if (nudges >= 12) {
       this._clearLoopState(tabId);
       const desc = loop.type === 'repeat'
         ? `the same call to ${loop.name}`
@@ -3061,12 +3073,12 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
   _refreshSystemPrompts() {
     for (const [tabId, messages] of this.conversations) {
       if (!messages || messages[0]?.role !== 'system') continue;
-      const mode = this.conversationModes.get(tabId) || this._conversationMode || 'ask';
+      const mode = this.conversationModes.get(tabId) || this._conversationMode || 'act';
       messages[0].content = this._buildSystemPrompt(mode);
     }
   }
 
-  getConversation(tabId, mode = 'ask') {
+  getConversation(tabId, mode = 'act') {
     if (!this.conversations.has(tabId)) {
       this.conversations.set(tabId, [
         { role: 'system', content: this._buildSystemPrompt(mode) },
@@ -3995,7 +4007,7 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
   }
 
   _shouldBlockDoneForProgress(tabId) {
-    if ((this.conversationModes.get(tabId) || 'ask') !== 'act') return false;
+    if ((this.conversationModes.get(tabId) || 'act') !== 'act') return false;
     return this._currentTaskProgressRows(tabId).length > 0;
   }
 
@@ -4215,11 +4227,11 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
     const progressIdx = this._findProgressLedgerIndex(messages);
     const progressMsg = progressIdx >= 0 ? messages[progressIdx] : null;
     // Keep last N messages verbatim. Agents doing heavy tool work (scraping,
-    // batch downloads) burn messages fast — each tool call is 2 messages
-    // (assistant + tool result), so 30 ≈ last 15 tool turns. 16 was too tight
-    // for long-horizon tasks and caused the model to "forget" outcomes from
-    // ~8 steps back (e.g. the file list from list_downloads).
-    const keepRecent = 30;
+    // batch downloads, email processing) burn messages fast — each tool call is 2 messages
+    // (assistant + tool result). Increased to retain more verbatim history across
+    // context trims for long stateful tasks (e.g. processing many inbox items).
+    // After trim the model relies more on recent + pinned ledger/digest.
+    const keepRecent = 50;
     // Exclude the pinned original task from both summary and recent slices.
     const afterPin = originalTaskIdx >= 0 ? originalTaskIdx + 1 : 1;
     const recentStart = Math.max(afterPin, messages.length - keepRecent);
@@ -4370,8 +4382,13 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
     }
 
     // Rebuild: system + pinned original task + scratchpad (if any) + summary + recent
-    const summaryMsg = { role: 'user', content: `[Context window was trimmed to stay within budget. Your ORIGINAL TASK is the user message above — keep working on it. ${summaryText}]` };
-    const summaryAck = { role: 'assistant', content: 'Understood, I have the conversation context. Continuing.' };
+    const summaryMsg = { role: 'user', content: `[Context window was trimmed to stay within budget. Your ORIGINAL TASK is the user message above — keep working on it. ${summaryText}
+
+IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rely on these pinned items that survive trims:
+- Your scratchpad (use scratchpad_write to record key facts).
+- Progress ledger (for any repeated-item work such as processing emails, use progress_update to mark items done/pending and progress_read to consult it).
+- Page digest (call get_state_digest often for cheap orientation on complex pages like inboxes).` };
+    const summaryAck = { role: 'assistant', content: 'Understood. I\'ll continue working on the original task, using the pinned ledger, scratchpad and digest for state.' };
 
     messages.length = 0;
     messages.push(systemMsg);
@@ -4385,6 +4402,13 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
     this._lastInputTokens.delete(tabId);
     // Arm the hysteresis cooldown: skip soft triggers for the next 2 steps.
     this._compactCooldown.set(tabId, 2);
+
+    // After a context trim the model's working memory has changed (detailed history
+    // replaced by summary). Clear the loop-detection buffer so pre-trim repeats
+    // (e.g. "I already read the inbox top") don't immediately count as "stuck"
+    // in the new smaller context. This is especially important for long tasks
+    // like email sorting where the agent legitimately re-orients with get_state_digest.
+    this._clearLoopState(tabId);
 
     console.log(`[WebBrain] Context trimmed for tab ${tabId}: ${oldMessages.length} old messages → summary. ${messages.length} messages remain.`);
 
@@ -5138,7 +5162,7 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
     if (name === 'done') {
       const outcome = normalizeDoneOutcome(args?.outcome);
       // In act mode, require a verification screenshot + page info before completing.
-      const mode = this.conversationModes.get(tabId) || 'ask';
+      const mode = this.conversationModes.get(tabId) || 'act';
       if (mode === 'act') {
         try {
           const tab = await browser.tabs.get(tabId);
@@ -5956,7 +5980,7 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
   /**
    * Continue processing from where we left off (after max steps).
    */
-  async continueProcessing(tabId, onUpdate = () => {}, mode = 'ask') {
+  async continueProcessing(tabId, onUpdate = () => {}, mode = 'act') {
     return this.processMessage(tabId, 'Please continue from where you left off.', onUpdate, mode);
   }
 
@@ -6119,7 +6143,7 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
    * @param {function} onUpdate - callback(type, data) for streaming updates
    * @returns {Promise<string>} final text response
    */
-  async processMessage(tabId, userMessage, onUpdate = () => {}, mode = 'ask') {
+  async processMessage(tabId, userMessage, onUpdate = () => {}, mode = 'act') {
     if (this._runningTabs.has(tabId)) {
       throw new Error('An agent run is already in progress for this tab.');
     }
@@ -6419,7 +6443,7 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
   /**
    * Process a message with streaming output.
    */
-  async processMessageStream(tabId, userMessage, onUpdate = () => {}, mode = 'ask') {
+  async processMessageStream(tabId, userMessage, onUpdate = () => {}, mode = 'act') {
     if (this._runningTabs.has(tabId)) {
       throw new Error('An agent run is already in progress for this tab.');
     }

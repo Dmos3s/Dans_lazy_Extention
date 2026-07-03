@@ -683,7 +683,7 @@ async function handleMessage(msg, sender) {
     case 'chat': {
       const tabId = msg.tabId || sender.tab?.id;
       if (!tabId) throw new Error('No tab ID');
-      const mode = msg.mode || 'ask';
+      const mode = msg.mode || 'act';
 
       if (msg.apiMutationsAllowed) agent.setApiMutationsAllowed(tabId, true);
 
@@ -720,7 +720,7 @@ async function handleMessage(msg, sender) {
     case 'chat_stream': {
       const tabId = msg.tabId || sender.tab?.id;
       if (!tabId) throw new Error('No tab ID');
-      const mode = msg.mode || 'ask';
+      const mode = msg.mode || 'act';
 
       if (msg.apiMutationsAllowed) agent.setApiMutationsAllowed(tabId, true);
 
@@ -746,7 +746,7 @@ async function handleMessage(msg, sender) {
     case 'continue': {
       const tabId = msg.tabId || sender.tab?.id;
       if (!tabId) throw new Error('No tab ID');
-      const mode = msg.mode || 'ask';
+      const mode = msg.mode || 'act';
 
       sendIndicatorMessage(tabId, 'WB_SHOW_AGENT_INDICATORS');
       try {
