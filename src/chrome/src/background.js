@@ -51,7 +51,7 @@ scheduler.start();
 // happen AFTER providerManager is constructed.
 setRecorderProviderManager(providerManager);
 
-const MAX_AGENT_STEPS_DEFAULT = 130;
+const MAX_AGENT_STEPS_DEFAULT = 400; // higher default for local models that often need more turns
 const MAX_AGENT_STEPS_UNLIMITED_SENTINEL = 200;
 const CONTEXT_MENU_ASK_SELECTION_ID = 'webbrain-ask-selection';
 

@@ -2027,6 +2027,7 @@ DO THIS INSTEAD, RIGHT NOW:
 1. Call get_accessibility_tree({filter:"interactive"}) or get_interactive_elements.
 2. Use click_ax({ref_id: "ref_XXX"}) or set_field({ref_id, text: "..."}) or click({text: "exact visible label"}).
 3. NEVER guess more coordinates. Pixel clicking is the last resort and you are already stuck in it.
+**Gmail warning**: On Gmail the top toolbar ("Move to", Labels, etc.) and selection state change dynamically. Never use coords there — click the button ref, then immediately re-read the tree to see the menu/popup that appeared in a portal.
 If the input still won't accept typing, the element may need a prior click_ax to focus it — then immediately follow with the type tool on the SAME ref_id.`;
         } else {
           nudgeWarning = loopCheck.warning;
@@ -2488,18 +2489,23 @@ If the input still won't accept typing, the element may need a prior click_ax to
       })()
     `);
 
-    // Navigate with ArrowDown/ArrowUp
+    // Synthetic Arrow keys — no CDP, no stealing input focus
     const delta = scan.targetIndex - scan.currentIndex;
     const arrowKey = delta > 0 ? 'ArrowDown' : 'ArrowUp';
-    const arrowVK = delta > 0 ? 40 : 38;
-    for (let i = 0; i < Math.abs(delta); i++) {
-      await cdpClient.sendCommand(tabId, 'Input.dispatchKeyEvent', {
-        type: 'keyDown', key: arrowKey, code: arrowKey, windowsVirtualKeyCode: arrowVK,
-      });
-      await cdpClient.sendCommand(tabId, 'Input.dispatchKeyEvent', {
-        type: 'keyUp', key: arrowKey, code: arrowKey, windowsVirtualKeyCode: arrowVK,
-      });
-    }
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func: (k, d) => {
+        const opts = { key: k, code: k, bubbles: true, cancelable: true };
+        for (let i = 0; i < Math.abs(d); i++) {
+          document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', opts));
+          document.activeElement?.dispatchEvent(new KeyboardEvent('keyup', opts));
+          document.dispatchEvent(new KeyboardEvent('keydown', opts));
+          document.dispatchEvent(new KeyboardEvent('keyup', opts));
+        }
+      },
+      args: [arrowKey, delta]
+    });
 
     // Verify
     const verify = await cdpClient.evaluate(tabId, `
@@ -3185,8 +3191,10 @@ If the input still won't accept typing, the element may need a prior click_ax to
    * best-effort — ignore failures and let the capture proceed.
    */
   async _bringToFrontForCapture(tabId) {
+    // Disabled to prevent stealing the foreground window / "clicker" focus.
+    // Agent should operate without affecting user's other work.
     try {
-      await cdpClient.sendCommand(tabId, 'Page.bringToFront');
+      // await cdpClient.sendCommand(tabId, 'Page.bringToFront');
     } catch { /* ignore */ }
   }
 
@@ -7695,6 +7703,11 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
         }
 
         await cdpClient.attach(tabId);
+        // Immediately try to unfocus to prevent stealing the keyboard "clicker".
+        try {
+          const t = await chrome.tabs.get(tabId);
+          if (t && t.windowId) await chrome.windows.update(t.windowId, { focused: false }).catch(() => {});
+        } catch {}
 
         // ── Duplicate submit-click guard ────────────────────────────────
         // The model often mistakes the modal-open link and the in-modal
@@ -8568,6 +8581,12 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
           const progressBeforeSel = await this._clickProgressSnapshot(tabId);
           const beforeTabIdsSel = new Set((await chrome.tabs.query({})).map(t => t.id));
           const selResult = await cdpClient.clickElement(tabId, args.selector);
+          cdpClient.detach(tabId).catch(() => {});
+          // Unfocus so agent doesn't take the "clicker" (keyboard focus) from other apps.
+          try {
+            const t = await chrome.tabs.get(tabId);
+            if (t && t.windowId) await chrome.windows.update(t.windowId, { focused: false }).catch(() => {});
+          } catch {}
           if (selResult?.success) this._showAgentTarget(tabId, selResult.rect || selResult, 'click_selector');
           const redirectedSel = await this._redirectTargetBlankClick(tabId, beforeTabIdsSel);
           if (redirectedSel?.redirected) {
@@ -8883,20 +8902,23 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
               })()
             `);
 
-            // Navigate with ArrowDown/ArrowUp — each key press changes the
-            // selected option and fires native change events.
+            // Synthetic Arrow keys via scripting (no focus stealing)
             const delta = sInfo.targetIndex - sInfo.currentIndex;
             const arrowKey = delta > 0 ? 'ArrowDown' : 'ArrowUp';
-            const arrowCode = delta > 0 ? 'ArrowDown' : 'ArrowUp';
-            const arrowVK = delta > 0 ? 40 : 38;
-            for (let i = 0; i < Math.abs(delta); i++) {
-              await cdpClient.sendCommand(tabId, 'Input.dispatchKeyEvent', {
-                type: 'keyDown', key: arrowKey, code: arrowCode, windowsVirtualKeyCode: arrowVK,
-              });
-              await cdpClient.sendCommand(tabId, 'Input.dispatchKeyEvent', {
-                type: 'keyUp', key: arrowKey, code: arrowCode, windowsVirtualKeyCode: arrowVK,
-              });
-            }
+            await chrome.scripting.executeScript({
+              target: { tabId },
+              world: 'MAIN',
+              func: (k, d) => {
+                const opts = { key: k, code: k, bubbles: true, cancelable: true };
+                for (let i = 0; i < Math.abs(d); i++) {
+                  document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', opts));
+                  document.activeElement?.dispatchEvent(new KeyboardEvent('keyup', opts));
+                  document.dispatchEvent(new KeyboardEvent('keydown', opts));
+                  document.dispatchEvent(new KeyboardEvent('keyup', opts));
+                }
+              },
+              args: [arrowKey, delta]
+            });
 
             // Verify the selection actually changed
             const verify = await cdpClient.evaluate(tabId, `
@@ -8967,32 +8989,32 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
         return { success: false, error: `Unsupported key "${key}". V1 supports Escape, Tab, and Enter.` };
       }
 
+      // Synthetic to avoid stealing keyboard focus / "clicker"
       try {
-        await cdpClient.attach(tabId);
         const keyMeta = {
-          Escape: { code: 'Escape', windowsVirtualKeyCode: 27 },
-          Tab: { code: 'Tab', windowsVirtualKeyCode: 9 },
-          Enter: { code: 'Enter', windowsVirtualKeyCode: 13 },
+          Escape: { code: 'Escape', keyCode: 27 },
+          Tab: { code: 'Tab', keyCode: 9 },
+          Enter: { code: 'Enter', keyCode: 13 },
         }[key];
 
-        for (let i = 0; i < repeat; i++) {
-          await cdpClient.sendCommand(tabId, 'Input.dispatchKeyEvent', {
-            type: 'keyDown',
-            key,
-            code: keyMeta.code,
-            windowsVirtualKeyCode: keyMeta.windowsVirtualKeyCode,
-          });
-          await cdpClient.sendCommand(tabId, 'Input.dispatchKeyEvent', {
-            type: 'keyUp',
-            key,
-            code: keyMeta.code,
-            windowsVirtualKeyCode: keyMeta.windowsVirtualKeyCode,
-          });
-        }
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          world: 'MAIN',
+          func: (k, c, kc, r) => {
+            for (let i = 0; i < r; i++) {
+              const opts = { key: k, code: c, keyCode: kc, bubbles: true, cancelable: true };
+              document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', opts));
+              document.activeElement?.dispatchEvent(new KeyboardEvent('keyup', opts));
+              document.dispatchEvent(new KeyboardEvent('keydown', opts));
+              document.dispatchEvent(new KeyboardEvent('keyup', opts));
+            }
+          },
+          args: [key, keyMeta.code, keyMeta.keyCode, repeat]
+        });
 
-        return { success: true, method: 'cdp-key', key, repeat };
+        return { success: true, method: 'synthetic-key', key, repeat };
       } catch (e) {
-        // Fall through to content-script path if CDP is unavailable.
+        return { success: false, error: `press_keys failed: ${e.message}` };
       }
     }
 

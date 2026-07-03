@@ -528,8 +528,14 @@
         for (const [ltxt, inp] of labelMap) {
           const ok = (needle === ltxt) || ltxt.startsWith(needle) || ltxt.includes(needle);
           if (ok) {
-            inp.scrollIntoView({ block: 'center', inline: 'center' });
-            inp.focus();
+            try {
+              const rr = inp.getBoundingClientRect();
+              const vh = window.innerHeight || 800;
+              const nearTopBar = rr.top >= 0 && rr.top < Math.min(80, vh * 0.15) && rr.height < 60;
+              const alreadyVisible = rr.top >= 0 && rr.bottom <= vh + 5;
+              if (!nearTopBar && !alreadyVisible) inp.scrollIntoView({ block: 'nearest' });
+            } catch (e) {}
+            try { inp.focus({ preventScroll: true }); } catch (e) {}
             el = inp;
             break;
           }
@@ -568,8 +574,14 @@
             for (const [ltxt, inp] of labelMap2) {
               const ok = (needle === ltxt) || ltxt.startsWith(needle) || ltxt.includes(needle);
               if (ok) {
-                inp.scrollIntoView({ block: 'center', inline: 'center' });
-                inp.focus();
+                try {
+                  const rr = inp.getBoundingClientRect();
+                  const vh = window.innerHeight || 800;
+                  const nearTopBar = rr.top >= 0 && rr.top < Math.min(80, vh * 0.15) && rr.height < 60;
+                  const alreadyVisible = rr.top >= 0 && rr.bottom <= vh + 5;
+                  if (!nearTopBar && !alreadyVisible) inp.scrollIntoView({ block: 'nearest' });
+                } catch (e) {}
+                try { inp.focus({ preventScroll: true }); } catch (e) {}
                 el = inp;
                 break;
               }
@@ -587,6 +599,21 @@
         const interactiveMatches = matches.filter(m => _isInteractive(m.e));
         if (interactiveMatches.length === 1) {
           matches = interactiveMatches;
+        } else if (/search|find|filter/i.test(needle)) {
+          // Special case for search bars (e.g. Gmail "Search mail"): prefer the INPUT
+          // with matching placeholder/aria over the search BUTTON/icon. This avoids
+          // ambiguity error and coordinate clicks (which grab the mouse).
+          const searchInputs = matches.filter(m => {
+            const e = m.e;
+            if (e.tagName !== 'INPUT') return false;
+            const ph = (e.placeholder || e.getAttribute('aria-label') || e.getAttribute('title') || '').toLowerCase();
+            return /search|find|filter/.test(ph) || /search|find|filter/.test(needle);
+          });
+          if (searchInputs.length === 1) {
+            matches = searchInputs;
+          } else if (interactiveMatches.length === 1) {
+            matches = interactiveMatches;
+          }
         } else {
           // Build rich candidates: position (rect), tag, role, surrounding
           // context (closest landmark/dialog/button text), and a suggested
@@ -628,12 +655,16 @@
               cx, cy,
               rect,
               ancestor,
+              placeholder: e.getAttribute('placeholder') || '',
+              ariaLabel: e.getAttribute('aria-label') || '',
+              title: e.getAttribute('title') || '',
+              type: e.getAttribute('type') || '',
             };
           });
           const _scopeNote = _modalRoot ? ' (search was scoped to the open modal/dialog)' : '';
           return {
             success: false,
-            error: `Ambiguous text match for "${params.text}" (mode=${usedMode}, matches=${matches.length})${_scopeNote}. ${candidates.length} candidates returned with cx/cy (precomputed click center, in CSS pixels) and ancestor context. Pick one and call click({x: candidate.cx, y: candidate.cy}) — no arithmetic needed. Use the ancestor field to disambiguate (e.g. an alertdialog's Cancel vs a form's Cancel sit in different containers). Do NOT retry click({text: "${params.text}"}) — it will fail the same way.`,
+            error: `Ambiguous text match for "${params.text}" (mode=${usedMode}, matches=${matches.length})${_scopeNote}. ${candidates.length} candidates returned with cx/cy (precomputed click center, in CSS pixels), ancestor, placeholder, ariaLabel, title, type. Prefer the INPUT (tag=input, has placeholder) for search bars. Pick one and call click({x: candidate.cx, y: candidate.cy}) — no arithmetic needed. Use placeholder/ariaLabel/ancestor/type to disambiguate (e.g. input vs button for "Search mail"). Do NOT retry click({text: "${params.text}"}) — it will fail the same way.`,
             candidates,
           };
         }
@@ -728,7 +759,15 @@
 
     // Do NOT scrollIntoView on SELECT elements (hidden selects in modals cause scroll jumps)
     if (el.tagName !== 'SELECT') {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      try {
+        const rr = el.getBoundingClientRect();
+        const vh = window.innerHeight || 800;
+        const nearTopBar = rr.top >= 0 && rr.top < Math.min(80, vh * 0.15) && rr.height < 60;
+        const alreadyVisible = rr.top >= 0 && rr.bottom <= vh + 5;
+        if (!nearTopBar && !alreadyVisible) {
+          el.scrollIntoView({ block: 'nearest' });
+        }
+      } catch (e) {}
     }
 
     // Occlusion hit-test: for text/selector/index clicks, verify that the
@@ -2052,7 +2091,13 @@
               : '';
             return { success: false, error: `ref_id ${ref_id} not found.${formatNote} The element may have been removed or the page replaced.${hint} Re-read the accessibility tree to get fresh ids — do NOT guess ref numbers or invent placeholders.`, suggestions };
           }
-          try { el.scrollIntoView({ block: 'center', inline: 'center' }); } catch {}
+          try {
+            const rr = el.getBoundingClientRect();
+            const vh = window.innerHeight || 800;
+            const nearTopBar = rr.top >= 0 && rr.top < Math.min(80, vh * 0.15) && rr.height < 60;
+            const alreadyVisible = rr.top >= 0 && rr.bottom <= vh + 5;
+            if (!nearTopBar && !alreadyVisible) el.scrollIntoView({ block: 'nearest' });
+          } catch (e) {}
           try { el.focus({ preventScroll: true }); } catch {}
           const rect = el.getBoundingClientRect();
           const tag = el.tagName ? el.tagName.toLowerCase() : '';
@@ -2233,7 +2278,13 @@
               : '';
             return { success: false, error: `ref_id ${ref_id} not found.${formatNote} The element may have been removed or the page replaced.${hint} Re-read the accessibility tree to get fresh ids — do NOT guess ref numbers or invent placeholders.`, suggestions };
           }
-          try { el.scrollIntoView({ block: 'center', inline: 'center' }); } catch {}
+          try {
+            const rr = el.getBoundingClientRect();
+            const vh = window.innerHeight || 800;
+            const nearTopBar = rr.top >= 0 && rr.top < Math.min(80, vh * 0.15) && rr.height < 60;
+            const alreadyVisible = rr.top >= 0 && rr.bottom <= vh + 5;
+            if (!nearTopBar && !alreadyVisible) el.scrollIntoView({ block: 'nearest' });
+          } catch (e) {}
           try { el.focus({ preventScroll: true }); } catch {}
           showAgentWorkingTarget(el, 'type_ax');
           // Capture the element's on-screen rect so the background can
@@ -2324,7 +2375,13 @@
               : '';
             return { success: false, error: `ref_id ${ref_id} not found.${formatNote} The element may have been removed or the page replaced.${hint} Re-read the accessibility tree to get fresh ids — do NOT guess ref numbers or invent placeholders.`, suggestions };
           }
-          try { el.scrollIntoView({ block: 'center', inline: 'center' }); } catch {}
+          try {
+            const rr = el.getBoundingClientRect();
+            const vh = window.innerHeight || 800;
+            const nearTopBar = rr.top >= 0 && rr.top < Math.min(80, vh * 0.15) && rr.height < 60;
+            const alreadyVisible = rr.top >= 0 && rr.bottom <= vh + 5;
+            if (!nearTopBar && !alreadyVisible) el.scrollIntoView({ block: 'nearest' });
+          } catch (e) {}
           try { el.focus({ preventScroll: true }); } catch {}
           showAgentWorkingTarget(el, 'set_field');
           const rect = (() => {

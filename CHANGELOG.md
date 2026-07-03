@@ -4,6 +4,28 @@ All notable changes to WebBrain are documented in this file.
 
 This changelog was generated from the repository Git history and release tags. Versions without a Git tag are inferred from version-bump commits and the current `package.json` / browser manifest versions.
 
+## [Unreleased] - 2026-07-03
+
+### Added
+- Chunked execution mode for large/complex tasks on local models (LM Studio / Qwen etc.). After compaction the agent is strongly reminded to keep the **overall goal** + only the **next tiny verifiable chunk** (5-8 items), using `progress_update` / `progress_read`, `get_state_digest` + `extract_data`, and the ledger. Prevents context thrash on long Gmail inbox jobs.
+
+### Changed
+- All normal clicks now use pure synthetic `chrome.scripting.executeScript({world: 'MAIN'})` + `el.click()` / `dispatchEvent`. No more `Input.dispatchMouseEvent` for clicks → no physical mouse cursor movement.
+- Keyboard simulation (`press_keys`, select arrows, clear sequences) switched to synthetic `KeyboardEvent` dispatch. Combined with explicit `windows.update({focused:false})` after actions and disabling `Page.bringToFront`, the agent can now run while the user works in other windows/apps without stealing focus or input.
+- Gmail adapter notes expanded with concrete "select → toolbar button → re-read tree for portal menu → act" recipes for moving/labeling batches of emails.
+- Anti-coordinate-click guidance made much stronger (especially for Gmail toolbar/search) in tool descriptions and loop nudges. The pixel-click loop detector now gives Gmail-specific advice.
+- Top-bar scrollIntoView avoided during synthetic clicks (prevents unwanted virtual list movement in Gmail etc.).
+- Local LM Studio context window forced to 65536 on load (matching cline) and stale stored values upgraded.
+
+### Fixed
+- Repeated "Move to"/Labels toolbar clicks or search input no longer steal the foreground window or hijack the user's keyboard (up/down arrows etc. in other apps).
+- Pixel-click loops on Gmail (e.g. hammering (320,25) on the selection toolbar) after compaction or menu interactions are now caught earlier and the model is guided back to `click_ax` / tree-based actions + small batches.
+- Synthetic clicks + focus handling survive aggressive context compaction while still working on complex stateful Gmail flows.
+
+### Notes
+- Project working tree relocated to `.../FuseHQ/Doll Browser/Dans_lazy_Extention` for better organization. Git remote refreshed.
+- Extensive debugging via new `webbrain-debug-*.json` logs (including the BidNet move session that hit the coord loop) drove the independence and chunking improvements.
+
 ## [18.3.0] - 2026-06-29
 
 ### Changed
