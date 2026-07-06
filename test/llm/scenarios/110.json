@@ -1,0 +1,56 @@
+{
+  "id": "110",
+  "category": "general-complex-iframe",
+  "mode": "act",
+  "browser": "chrome",
+  "tab": {
+    "url": "https://checkout.example.com/pay",
+    "title": "Checkout"
+  },
+  "description": "Card entry fields are inside a cross-origin Stripe-style iframe. Regular click/type_text cannot cross the iframe boundary. Tests whether the model uses iframe_click/iframe_type instead.",
+  "seed": [
+    {
+      "role": "user",
+      "content": "[Current page context — URL: https://checkout.example.com/pay — Title: Checkout]\n\nEnter the test card number 4242 4242 4242 4242 into the card field and submit."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "f1",
+          "type": "function",
+          "function": {
+            "name": "get_frames",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "f1",
+      "name": "get_frames",
+      "content": "{\"frames\":[{\"id\":\"main\",\"url\":\"https://checkout.example.com/pay\"},{\"id\":\"frame_1\",\"url\":\"https://js.stripe.com/v3/elements-inner-card-abc123\",\"parent\":\"main\"}]}"
+    }
+  ],
+  "expected": {
+    "idealNextToolCall": {
+      "name": "iframe_type",
+      "args": {
+        "urlFilter": "stripe.com"
+      }
+    },
+    "antiPatterns": [
+      {
+        "match": "type_text",
+        "reason": "type_text acts on the top-level document only — it cannot reach fields inside a cross-origin iframe."
+      },
+      {
+        "match": "click({text:",
+        "reason": "Plain click also cannot cross the iframe boundary; iframe_click/iframe_type are the correct tools once a relevant frame has been identified."
+      }
+    ],
+    "successRubric": "Use iframe_type (urlFilter matching the stripe.com frame) to fill the card field, then iframe_click to submit — not the top-level click/type_text tools."
+  }
+}

@@ -197,7 +197,7 @@ const WEBBRAIN_SUBSCRIBE_URL = 'https://webbrain.one/subscribe';
 const WEBBRAIN_ACCOUNT_URL = 'https://api.webbrain.one/account';
 
 const DEFAULT_COST_ALLOWANCE_USD = 10;
-const MAX_AGENT_STEPS_DEFAULT = 130;
+const MAX_AGENT_STEPS_DEFAULT = 400; // higher for local models that need more turns on complex tasks
 const MAX_AGENT_STEPS_UNLIMITED_SENTINEL = 200;
 const PLAN_BEFORE_ACT_MODES = new Set(['try', 'strict', 'off']);
 
@@ -868,13 +868,14 @@ function providerInputValue(input) {
 
 // Effective tier for the dropdown's initial value — same precedence as the
 // provider getter: cloud is forced full; an explicit promptTier wins; the
-// legacy useCompactPrompt boolean maps to compact; otherwise local → mid.
+// legacy useCompactPrompt boolean maps to compact; otherwise full (see
+// providers/base.js get promptTier() for why local no longer defaults to mid).
 function effectivePromptTier(config) {
   if ((config.category || 'cloud') === 'cloud') return 'full';
   const tier = config.promptTier;
   if (tier === 'compact' || tier === 'mid' || tier === 'full') return tier;
   if (config.useCompactPrompt) return 'compact';
-  return config.category === 'local' ? 'mid' : 'full';
+  return 'full';
 }
 
 function renderProviders() {
@@ -910,7 +911,9 @@ function renderProviders() {
       fields: [
         { key: 'baseUrl', labelKey: 'st.provider.field.server_url', type: 'text', placeholder: 'http://localhost:1234/v1' },
         { key: 'model', labelKey: 'st.provider.field.model_optional', type: 'text', placeholderKey: 'st.provider.field.model_loaded_hint' },
-        CONTEXT_WINDOW_FIELD,
+        // For the qwen model used here (via cline), match the 65536 context
+        // loaded in LM Studio. Using the generic 16384 placeholder would be misleading.
+        { ...CONTEXT_WINDOW_FIELD, placeholder: '65536' },
         { key: 'supportsVision', labelKey: 'st.provider.field.supports_vision', type: 'checkbox' },
         PROMPT_TIER_FIELD,
       ],

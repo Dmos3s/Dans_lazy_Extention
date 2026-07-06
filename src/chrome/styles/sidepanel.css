@@ -1851,3 +1851,62 @@ body {
     display: none;
   }
 }
+
+/* ── Pasted-image attachments (screenshots pasted/dropped into the input) ── */
+#attach-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 2px 4px;
+}
+#attach-strip.hidden { display: none; }
+.attach-chip {
+  position: relative;
+  width: 56px;
+  height: 42px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-color, rgba(128,128,128,0.35));
+  flex: none;
+}
+.attach-chip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.attach-chip .attach-remove {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0;
+  cursor: pointer;
+  text-align: center;
+}
+.attach-chip .attach-remove:hover,
+.attach-chip .attach-remove:focus-visible {
+  background: rgba(200, 30, 30, 0.9);
+  outline: none;
+}
+/* Thumbnails echoed into the sent user bubble */
+.message.user .user-attach-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.message.user .user-attach-thumbs img {
+  max-width: 140px;
+  max-height: 100px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: block;
+}

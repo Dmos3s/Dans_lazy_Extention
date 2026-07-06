@@ -11,6 +11,8 @@
     "test:safety-report": "node test/llm/safety-report.mjs",
     "test:fixtures": "node test/fixtures/run.mjs",
     "test:anonymous": "node test/anonymous/run.mjs",
+    "test:e2e-agent": "node test/e2e/run-agent-e2e.mjs",
+    "test:e2e-guards": "node test/e2e/guard-validation.mjs",
     "build:blog": "node scripts/build-blog.mjs",
     "build:web": "node web/build/build.mjs",
     "build:zip": "node scripts/build-zip.mjs",

@@ -245,6 +245,10 @@ export function frameHostMatches(frameUrl, urlFilter) {
   const want = normalizeHost(urlFilter);
   if (!want) return true;
   const host = normalizeHost(frameUrl);
+  // Hostless schemes (file:, data:, blob:, about:) have no domain to spoof —
+  // the anti-substring-injection threat this guards against only applies to
+  // real http(s) hosts. Fall back to the caller's substring check alone.
+  if (!host) return true;
   return host === want || host.endsWith('.' + want);
 }
 

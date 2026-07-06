@@ -1,0 +1,54 @@
+{
+  "id": "109",
+  "category": "general-complex-shadow-dom",
+  "mode": "act",
+  "browser": "chrome",
+  "tab": {
+    "url": "https://app.example.com/dashboard",
+    "title": "Dashboard"
+  },
+  "description": "A <site-search> custom element wraps its input in shadow DOM. Regular get_accessibility_tree doesn't pierce it. Tests whether the model reaches for get_shadow_dom/shadow_dom_query instead of repeating get_accessibility_tree or guessing coordinates.",
+  "seed": [
+    {
+      "role": "user",
+      "content": "[Current page context — URL: https://app.example.com/dashboard — Title: Dashboard]\n\nSearch for \"invoice #4471\" using the search box in the top bar."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "s1",
+          "type": "function",
+          "function": {
+            "name": "get_accessibility_tree",
+            "arguments": "{\"filter\":\"interactive\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "s1",
+      "name": "get_accessibility_tree",
+      "content": "{\"nodes\":[{\"ref\":\"ref_1\",\"role\":\"custom-element\",\"tag\":\"site-search\",\"text\":\"(shadow root — contents not visible in this tree)\"},{\"ref\":\"ref_2\",\"role\":\"button\",\"text\":\"Notifications\"},{\"ref\":\"ref_3\",\"role\":\"button\",\"text\":\"Settings\"}],\"notice\":\"One or more elements on this page use shadow DOM; their internal content is not exposed in this flat tree. Use get_shadow_dom to list shadow hosts, then shadow_dom_query to interact inside them.\"}"
+    }
+  ],
+  "expected": {
+    "idealNextToolCall": {
+      "name": "get_shadow_dom",
+      "args": {}
+    },
+    "antiPatterns": [
+      {
+        "match": "get_accessibility_tree",
+        "reason": "Already told the tree doesn't pierce shadow DOM — repeating it won't reveal the search input."
+      },
+      {
+        "match": "click({x:",
+        "reason": "Guessing coordinates for a component whose actual input location is unknown from this data is exactly the failure mode the loop-detector exists to catch."
+      }
+    ],
+    "successRubric": "Call get_shadow_dom to enumerate shadow hosts, then shadow_dom_query to find and interact with the actual search input inside <site-search>."
+  }
+}

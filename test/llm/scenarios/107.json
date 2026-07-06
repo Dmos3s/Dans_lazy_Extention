@@ -1,0 +1,133 @@
+{
+  "id": "107",
+  "category": "local-stress-gmail-label-fallback",
+  "mode": "act",
+  "browser": "chrome",
+  "tab": {
+    "url": "https://mail.google.com/mail/u/0/#inbox",
+    "title": "Inbox - Gmail"
+  },
+  "description": "3 emails selected, \"Labels\" popup click succeeded but the menu never rendered in the tree twice in a row. Should fall back to drag_drop onto the sidebar label rather than retrying the popup a 3rd time.",
+  "seed": [
+    {
+      "role": "user",
+      "content": "[Current page context — URL: https://mail.google.com/mail/u/0/#inbox — Title: Inbox - Gmail]\n\nApply the \"BidNet\" label to these 3 selected emails."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "d1",
+          "type": "function",
+          "function": {
+            "name": "get_accessibility_tree",
+            "arguments": "{\"filter\":\"interactive\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "d1",
+      "name": "get_accessibility_tree",
+      "content": "{\"nodes\":[{\"ref\":\"ref_10\",\"role\":\"row\",\"text\":\"unread, BidNet Direct, RFP 2201\",\"selected\":true},{\"ref\":\"ref_11\",\"role\":\"row\",\"text\":\"unread, BidNet Direct, RFP 2202\",\"selected\":true},{\"ref\":\"ref_12\",\"role\":\"row\",\"text\":\"unread, BidNet Direct, RFP 2203\",\"selected\":true},{\"ref\":\"ref_20\",\"role\":\"button\",\"text\":\"Labels\"},{\"ref\":\"ref_30\",\"role\":\"link\",\"text\":\"BidNet\"}]}"
+    },
+    {
+      "role": "assistant",
+      "content": "Clicking Labels to open the menu.",
+      "tool_calls": [
+        {
+          "id": "d2",
+          "type": "function",
+          "function": {
+            "name": "click_ax",
+            "arguments": "{\"ref_id\":\"ref_20\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "d2",
+      "name": "click_ax",
+      "content": "{\"success\":true,\"ref_id\":\"ref_20\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "d3",
+          "type": "function",
+          "function": {
+            "name": "get_accessibility_tree",
+            "arguments": "{\"filter\":\"visible\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "d3",
+      "name": "get_accessibility_tree",
+      "content": "{\"nodes\":[{\"ref\":\"ref_10\",\"role\":\"row\",\"text\":\"unread, BidNet Direct, RFP 2201\",\"selected\":true},{\"ref\":\"ref_11\",\"role\":\"row\",\"text\":\"unread, BidNet Direct, RFP 2202\",\"selected\":true},{\"ref\":\"ref_12\",\"role\":\"row\",\"text\":\"unread, BidNet Direct, RFP 2203\",\"selected\":true},{\"ref\":\"ref_20\",\"role\":\"button\",\"text\":\"Labels\"},{\"ref\":\"ref_30\",\"role\":\"link\",\"text\":\"BidNet\"}],\"notice\":\"No popup/menu/listbox detected in the tree after the click.\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "Menu did not appear. Trying Labels again.",
+      "tool_calls": [
+        {
+          "id": "d4",
+          "type": "function",
+          "function": {
+            "name": "click_ax",
+            "arguments": "{\"ref_id\":\"ref_20\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "d4",
+      "name": "click_ax",
+      "content": "{\"success\":true,\"ref_id\":\"ref_20\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "d5",
+          "type": "function",
+          "function": {
+            "name": "get_accessibility_tree",
+            "arguments": "{\"filter\":\"visible\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "d5",
+      "name": "get_accessibility_tree",
+      "content": "{\"nodes\":[{\"ref\":\"ref_10\",\"role\":\"row\",\"text\":\"unread, BidNet Direct, RFP 2201\",\"selected\":true},{\"ref\":\"ref_11\",\"role\":\"row\",\"text\":\"unread, BidNet Direct, RFP 2202\",\"selected\":true},{\"ref\":\"ref_12\",\"role\":\"row\",\"text\":\"unread, BidNet Direct, RFP 2203\",\"selected\":true},{\"ref\":\"ref_20\",\"role\":\"button\",\"text\":\"Labels\"},{\"ref\":\"ref_30\",\"role\":\"link\",\"text\":\"BidNet\"}],\"notice\":\"Still no popup/menu/listbox detected in the tree after the click.\"}"
+    }
+  ],
+  "expected": {
+    "idealNextToolCall": {
+      "name": "drag_drop",
+      "args": {
+        "fromRefId": "ref_10",
+        "toRefId": "ref_30"
+      }
+    },
+    "antiPatterns": [
+      {
+        "match": "click_ax({ref_id:\"ref_20\"})",
+        "reason": "Third identical click on the same unresponsive Labels button — should fall back to drag_drop onto the sidebar label per the adapter note instead of retrying the popup again."
+      }
+    ],
+    "successRubric": "After the Labels popup fails to render twice in a row, fall back to dragging the selected emails onto the \"BidNet\" label ref in the sidebar via drag_drop, rather than clicking Labels a third time."
+  }
+}

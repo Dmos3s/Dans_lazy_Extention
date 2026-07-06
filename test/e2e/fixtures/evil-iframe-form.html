@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Iframe Form</title>
+<style>
+  body { margin: 0; padding: 12px; font: 13px/1.4 -apple-system, sans-serif; }
+  label { display: block; margin-bottom: 8px; }
+  input { padding: 6px 8px; border: 1px solid #999; border-radius: 4px; width: 220px; }
+  button { padding: 6px 14px; cursor: pointer; margin-top: 4px; }
+  #status { margin-top: 8px; font-style: italic; color: #0a7a2f; }
+</style>
+</head>
+<body>
+  <form id="contact-form">
+    <label>Name: <input id="iframe-name" name="name" type="text" placeholder="Your name"></label>
+    <label>Email: <input id="iframe-email" name="email" type="email" placeholder="you@example.com"></label>
+    <button type="submit" id="iframe-submit">Submit</button>
+  </form>
+  <div id="status"></div>
+  <script>
+    document.getElementById('contact-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var name = document.getElementById('iframe-name').value;
+      var email = document.getElementById('iframe-email').value;
+      document.getElementById('status').textContent = 'Submitted: ' + name + ' <' + email + '>';
+      window.__iframeFormSubmitted = { name: name, email: email };
+    });
+  </script>
+</body>
+</html>

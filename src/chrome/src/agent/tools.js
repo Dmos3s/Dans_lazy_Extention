@@ -12,6 +12,18 @@ const DONE_OUTCOME_PROPERTY = {
 const DONE_REQUIRED = ['summary'];
 const DONE_REQUIRED_WITH_OUTCOME = ['summary', 'outcome'];
 
+// Outcome contracts: an optional postcondition stated BEFORE a state-changing
+// action runs. The runtime captures a compact page-state snapshot before and
+// after the call and reports back whether anything visibly changed at all —
+// this catches the "the tool call returned success but nothing actually
+// happened" class of silent failure (e.g. a submit that never registered)
+// BEFORE the model moves on assuming it worked. Optional and free-form by
+// design: forcing structure here would just relocate the guessing problem.
+const OUTCOME_EXPECT_PARAM = {
+  type: 'string',
+  description: 'OPTIONAL but recommended for anything you are not certain will work: state what you expect to happen as a RESULT of this action (e.g. "a dropdown menu opens", "the row count increases", "the search results filter", "the modal disappears"). The result will include a before/after comparison of the visible page so you can check your expectation against what actually happened — a successful tool call does not always mean the expected outcome occurred.',
+};
+
 export const AGENT_TOOLS = [
   {
     type: 'function',
@@ -40,8 +52,25 @@ export const AGENT_TOOLS = [
         type: 'object',
         properties: {
           ref_id: { type: 'string', description: 'A ref_id from get_accessibility_tree, e.g. "ref_42".' },
+          expect: OUTCOME_EXPECT_PARAM,
         },
         required: ['ref_id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'select_dropdown_option',
+      description: 'ONE-SHOT: open a combobox/listbox trigger, find the option matching optionText, click it, and verify. Use this instead of click_ax + get_accessibility_tree + click_ax for ANY custom dropdown (role="combobox"/aria-haspopup, or click_ax reported opened_popup_likely:true) — a plain-looking dropdown is almost always a React portal that renders its options OUTSIDE the trigger\'s subtree, and manually chaining click → re-read tree → click the option is where this fails most often. This tool does all of it in one call and self-verifies by checking whether the trigger\'s own displayed text actually changed — check the `labelChanged`/`hint` fields in the result before assuming it worked. Does NOT work on a native <select> (use press_keys / type_ax on that instead — it has no portal to open).',
+      parameters: {
+        type: 'object',
+        properties: {
+          triggerRef: { type: 'string', description: 'ref_id of the combobox/dropdown trigger button from get_accessibility_tree, e.g. "ref_9".' },
+          optionText: { type: 'string', description: 'Visible text of the option to select, e.g. "Alpha". Matched case-insensitively.' },
+          textMatch: { type: 'string', enum: ['exact', 'prefix', 'contains'], description: 'Matching mode for optionText. Default "exact" (falls back to "contains" automatically if no exact match, since options often carry extra text like counts).' },
+        },
+        required: ['triggerRef', 'optionText'],
       },
     },
   },
@@ -57,6 +86,7 @@ export const AGENT_TOOLS = [
           text: { type: 'string', description: 'Text to type.' },
           clear: { type: 'boolean', description: 'Clear existing content before typing (default: false).' },
           lang: { type: 'string', enum: ['tr-deasciify'], description: 'OPTIONAL text transform. "tr-deasciify" converts ASCII Turkish to proper Turkish characters before typing.' },
+          expect: OUTCOME_EXPECT_PARAM,
         },
         required: ['ref_id', 'text'],
       },
@@ -75,6 +105,7 @@ export const AGENT_TOOLS = [
           clear: { type: 'boolean', description: 'Clear existing content before typing (default: true).' },
           submit: { type: 'boolean', description: 'Press Enter after typing (default: false).' },
           lang: { type: 'string', enum: ['tr-deasciify'], description: 'OPTIONAL text transform. "tr-deasciify" converts ASCII Turkish to proper Turkish characters before typing.' },
+          expect: OUTCOME_EXPECT_PARAM,
         },
         required: ['ref_id', 'text'],
       },
@@ -105,6 +136,7 @@ export const AGENT_TOOLS = [
           fromRefId: { type: 'string', description: 'ref_id of the element to grab (the source of the drag).' },
           toRefId: { type: 'string', description: 'ref_id of the element to drop onto (the destination).' },
           steps: { type: 'number', description: 'Number of intermediate mouseMoved waypoints between source and destination. Default 10. Sites with momentum-tracking dnd (Trello) sometimes need 15–20 for the drop indicator to settle.' },
+          expect: OUTCOME_EXPECT_PARAM,
         },
         required: ['fromRefId', 'toRefId'],
       },
@@ -242,8 +274,7 @@ export const AGENT_TOOLS = [
     type: 'function',
     function: {
       name: 'click',
-      description: 'Click an element. FOUR ways to use it: (1) CSS selector, (2) visible text, (3) element index from get_interactive_elements, (4) x/y coordinates. For text clicks, default matching is EXACT and case-insensitive. You can opt into broader matching with `textMatch: "prefix"` or `textMatch: "contains"`. Note: jQuery/Playwright pseudo-classes like `:contains()` and `:has-text()` are NOT valid CSS and will fail; use the `text` parameter instead. COORDINATES are CSS pixels; if you are reading (x,y) off a screenshot, that screenshot MUST have been captured with screenshot({coord_aligned: true}) or the click will land at the wrong position on HiDPI displays. Prefer click_ax({ref_id}) — it avoids this entirely.
-**NEVER use coordinate clicks on Gmail** (toolbar, selection bar, "Move to", Labels, or virtual list rows). The UI is highly dynamic; toolbar buttons and menus only exist in certain states and menus render in portals. Always use refs from a fresh get_accessibility_tree after any selection or toolbar click. Guessing pixels here almost always triggers the pixel-click loop detector.',
+      description: 'Click an element. FOUR ways to use it: (1) CSS selector, (2) visible text, (3) element index from get_interactive_elements, (4) x/y coordinates. For text clicks, default matching is EXACT and case-insensitive. You can opt into broader matching with `textMatch: "prefix"` or `textMatch: "contains"`. Note: jQuery/Playwright pseudo-classes like `:contains()` and `:has-text()` are NOT valid CSS and will fail; use the `text` parameter instead. COORDINATES are CSS pixels; if you are reading (x,y) off a screenshot, that screenshot MUST have been captured with screenshot({coord_aligned: true}) or the click will land at the wrong position on HiDPI displays. Prefer click_ax({ref_id}) — it avoids this entirely.\n**NEVER use coordinate clicks on Gmail** (toolbar, selection bar, "Move to", Labels, or virtual list rows). The UI is highly dynamic; toolbar buttons and menus only exist in certain states and menus render in portals. Always use refs from a fresh get_accessibility_tree after any selection or toolbar click. Guessing pixels here almost always triggers the pixel-click loop detector.',
       parameters: {
         type: 'object',
         properties: {
@@ -253,6 +284,7 @@ export const AGENT_TOOLS = [
           index: { type: 'number', description: 'Index from get_interactive_elements result' },
           x: { type: 'number', description: 'X coordinate to click' },
           y: { type: 'number', description: 'Y coordinate to click' },
+          expect: OUTCOME_EXPECT_PARAM,
         },
       },
     },

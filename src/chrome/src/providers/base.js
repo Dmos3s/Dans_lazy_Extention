@@ -80,17 +80,29 @@ export class BaseLLMProvider {
    * which ACT system prompt and which tool set the agent uses.
    *
    * Cloud providers are always 'full' — the tier knob is a small-model
-   * concern, exposed only for local and OpenRouter providers. Otherwise an
-   * explicit config.promptTier wins; failing that the legacy boolean
-   * useCompactPrompt maps to 'compact'; failing that local providers default
-   * to 'mid' and everything else (e.g. OpenRouter) to 'full'.
+   * concern, exposed only for local and OpenRouter providers. An explicit
+   * config.promptTier always wins; failing that the legacy boolean
+   * useCompactPrompt maps to 'compact'; failing that everything (including
+   * local providers) defaults to 'full'.
+   *
+   * Local used to default to 'mid' on the theory that fewer tools helps a
+   * smaller model. Measured against qwen3.6-35b-a3b via
+   * test/llm/run-scenarios.mjs (100-scenario suite, tier=full vs
+   * tier=compact): full scored 53/100 ideal with zero empty-output
+   * failures; compact scored 44/100 with 6 genuine empty-output failures
+   * (finish_reason:"stop", blank content, no tool call). Fewer tools did
+   * not help this model — it did measurably worse. 'mid' also silently
+   * dropped drag_drop/hover from the tool list with no user-visible
+   * indication why those actions "didn't work". Users who want a smaller
+   * prompt for a genuinely weak model can still set promptTier explicitly
+   * in the provider's settings.
    */
   get promptTier() {
     if (this.config.category === 'cloud') return 'full';
     const t = this.config.promptTier;
     if (t === 'compact' || t === 'mid' || t === 'full') return t;
     if (this.config.useCompactPrompt) return 'compact';
-    return this.config.category === 'local' ? 'mid' : 'full';
+    return 'full';
   }
 
   /**

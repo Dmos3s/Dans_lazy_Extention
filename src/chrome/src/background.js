@@ -468,12 +468,36 @@ chrome.contextMenus?.onClicked?.addListener?.((info, tab) => {
  */
 const activeIndicatorTabs = new Set();
 
+// ---- MV3 service-worker keepalive while an agent run is in flight ----
+// The `chat`/`chat_stream` message handlers hold ONE sendMessage/sendResponse
+// channel open for the ENTIRE multi-step run — which for a slow local model
+// on a long task can be many minutes. With no periodic event to process,
+// Chrome can consider this service worker idle and reclaim it mid-run,
+// severing that channel: the side panel then sees "A listener indicated an
+// asynchronous response by returning true, but the message channel closed
+// before a response was received" with no further explanation. Firing a
+// chrome.alarms event every 30s (the documented minimum alarm period) gives
+// the worker a steady trickle of activity, which resets Chrome's idle timer
+// and keeps it alive for the duration of the run. Purely a keepalive — the
+// alarm handler itself does nothing.
+const KEEPALIVE_ALARM = 'wb_keepalive';
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== KEEPALIVE_ALARM) return; // no-op; existing is the point
+});
+
 function sendIndicatorMessage(tabId, type) {
   if (tabId == null || !type) return;
   if (type === 'WB_SHOW_AGENT_INDICATORS') {
+    const wasEmpty = activeIndicatorTabs.size === 0;
     activeIndicatorTabs.add(tabId);
+    if (wasEmpty) {
+      chrome.alarms.create(KEEPALIVE_ALARM, { periodInMinutes: 0.5 });
+    }
   } else if (type === 'WB_HIDE_AGENT_INDICATORS') {
     activeIndicatorTabs.delete(tabId);
+    if (activeIndicatorTabs.size === 0) {
+      chrome.alarms.clear(KEEPALIVE_ALARM).catch(() => {});
+    }
   }
   try {
     chrome.tabs.sendMessage(tabId, { type }).catch(() => { /* expected */ });
@@ -867,7 +891,11 @@ async function handleMessage(msg, sender) {
             type,
             data,
           }).catch(() => {});
-        }, mode);
+        }, mode, {
+          // User-attached screenshots pasted/dropped into the side panel.
+          // Validated + bounded agent-side; forwarded verbatim here.
+          images: Array.isArray(msg.images) ? msg.images : undefined,
+        });
 
         return { content: result, updates };
       } finally {
@@ -893,7 +921,9 @@ async function handleMessage(msg, sender) {
             type,
             data,
           }).catch(() => {});
-        }, mode);
+        }, mode, {
+          images: Array.isArray(msg.images) ? msg.images : undefined,
+        });
 
         return { content: result };
       } finally {

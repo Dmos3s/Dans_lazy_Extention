@@ -1,0 +1,52 @@
+{
+  "id": "115",
+  "category": "general-complex-wizard",
+  "mode": "act",
+  "browser": "chrome",
+  "tab": {
+    "url": "https://onboarding.example.com/setup?step=2",
+    "title": "Account Setup — Step 2 of 4"
+  },
+  "description": "A multi-step wizard: step 1 (company info) was already completed, now on step 2 (billing address) with one required field left empty. Tests whether the model fills the actual required field before clicking Continue, rather than clicking Continue immediately because a \"Continue\" button is visible.",
+  "seed": [
+    {
+      "role": "user",
+      "content": "[Current page context — URL: https://onboarding.example.com/setup?step=2 — Title: Account Setup — Step 2 of 4]\n\nContinue the account setup — use \"500 Market St, Springfield\" for the billing address."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "w1",
+          "type": "function",
+          "function": {
+            "name": "get_accessibility_tree",
+            "arguments": "{\"filter\":\"interactive\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "w1",
+      "name": "get_accessibility_tree",
+      "content": "{\"nodes\":[{\"ref\":\"ref_1\",\"role\":\"heading\",\"text\":\"Step 2 of 4: Billing Address\"},{\"ref\":\"ref_2\",\"role\":\"textbox\",\"text\":\"Street address\",\"value\":\"\"},{\"ref\":\"ref_3\",\"role\":\"textbox\",\"text\":\"City\",\"value\":\"\"},{\"ref\":\"ref_4\",\"role\":\"button\",\"text\":\"Continue\",\"disabled\":false},{\"ref\":\"ref_5\",\"role\":\"button\",\"text\":\"Back\"}],\"notice\":\"Required fields \\\"Street address\\\" and \\\"City\\\" are both currently empty.\"}"
+    }
+  ],
+  "expected": {
+    "idealNextToolCall": {
+      "name": "set_field",
+      "args": {
+        "ref_id": "ref_2"
+      }
+    },
+    "antiPatterns": [
+      {
+        "match": "click_ax({ref_id:\"ref_4\"})",
+        "reason": "Clicking Continue with the required address fields still empty either fails validation (wasting a step) or, worse, silently advances with incomplete data the user explicitly asked to be entered."
+      }
+    ],
+    "successRubric": "Fill the empty required fields (street address, city) from the user-supplied address BEFORE clicking Continue — do not click Continue while required fields are visibly empty."
+  }
+}

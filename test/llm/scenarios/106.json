@@ -1,0 +1,274 @@
+{
+  "id": "106",
+  "category": "local-stress-govsite-pagination",
+  "mode": "act",
+  "browser": "chrome",
+  "tab": {
+    "url": "https://www.somestate.gov/procurement/bids",
+    "title": "Open Solicitations — State Procurement Portal"
+  },
+  "description": "Government bid site: agent clicked Next twice and got byte-identical results both times (stuck ASP.NET postback paginator). Should stop and re-orient, not click Next a 3rd time, and should have been using extract_data not raw AX tree for the result rows.",
+  "seed": [
+    {
+      "role": "user",
+      "content": "[Current page context — URL: https://www.somestate.gov/procurement/bids?page=1 — Title: Open Solicitations — State Procurement Portal]\n\nSearch this site for road construction and paving bids, and give me a list of all open ones with their due dates."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "c1",
+          "type": "function",
+          "function": {
+            "name": "get_state_digest",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "c1",
+      "name": "get_state_digest",
+      "content": "{\"url\":\"https://www.somestate.gov/procurement/bids\",\"summary\":\"State procurement portal, keyword search box (ctl00$ContentPlaceHolder1$txtKeyword), results table below, ASP.NET postback pagination.\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "Searching for road construction bids.",
+      "tool_calls": [
+        {
+          "id": "c2",
+          "type": "function",
+          "function": {
+            "name": "type_text",
+            "arguments": "{\"selector\":\"#ctl00_ContentPlaceHolder1_txtKeyword\",\"text\":\"road construction paving\",\"clear\":true}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "c2",
+      "name": "type_text",
+      "content": "{\"success\":true}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "c3",
+          "type": "function",
+          "function": {
+            "name": "press_keys",
+            "arguments": "{\"key\":\"Enter\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "c3",
+      "name": "press_keys",
+      "content": "{\"success\":true}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "c4",
+          "type": "function",
+          "function": {
+            "name": "wait_for_stable",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "c4",
+      "name": "wait_for_stable",
+      "content": "{\"stable\":true,\"elapsedMs\":600}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "c5",
+          "type": "function",
+          "function": {
+            "name": "extract_data",
+            "arguments": "{\"type\":\"tables\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "c5",
+      "name": "extract_data",
+      "content": "{\"rows\":[{\"id\":\"BID-2201\",\"title\":\"County Road 12 Repaving\",\"due\":\"2026-07-20\"},{\"id\":\"BID-2202\",\"title\":\"Highway 9 Paving Overlay\",\"due\":\"2026-07-25\"}]}"
+    },
+    {
+      "role": "assistant",
+      "content": "Recording these and moving to the next page.",
+      "tool_calls": [
+        {
+          "id": "c6",
+          "type": "function",
+          "function": {
+            "name": "progress_update",
+            "arguments": "{\"items\":[{\"id\":\"BID-2201\",\"status\":\"done\"},{\"id\":\"BID-2202\",\"status\":\"done\"}]}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "c6",
+      "name": "progress_update",
+      "content": "{\"success\":true}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "c7",
+          "type": "function",
+          "function": {
+            "name": "click",
+            "arguments": "{\"text\":\"Next\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "c7",
+      "name": "click",
+      "content": "{\"success\":true}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "c8",
+          "type": "function",
+          "function": {
+            "name": "wait_for_stable",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "c8",
+      "name": "wait_for_stable",
+      "content": "{\"stable\":true,\"elapsedMs\":500}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "c9",
+          "type": "function",
+          "function": {
+            "name": "extract_data",
+            "arguments": "{\"type\":\"tables\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "c9",
+      "name": "extract_data",
+      "content": "{\"rows\":[{\"id\":\"BID-2201\",\"title\":\"County Road 12 Repaving\",\"due\":\"2026-07-20\"},{\"id\":\"BID-2202\",\"title\":\"Highway 9 Paving Overlay\",\"due\":\"2026-07-25\"}]}"
+    },
+    {
+      "role": "assistant",
+      "content": "Same rows — the postback may not have advanced. Trying Next again.",
+      "tool_calls": [
+        {
+          "id": "c10",
+          "type": "function",
+          "function": {
+            "name": "click",
+            "arguments": "{\"text\":\"Next\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "c10",
+      "name": "click",
+      "content": "{\"success\":true}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "c11",
+          "type": "function",
+          "function": {
+            "name": "wait_for_stable",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "c11",
+      "name": "wait_for_stable",
+      "content": "{\"stable\":true,\"elapsedMs\":500}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "c12",
+          "type": "function",
+          "function": {
+            "name": "extract_data",
+            "arguments": "{\"type\":\"tables\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "c12",
+      "name": "extract_data",
+      "content": "{\"rows\":[{\"id\":\"BID-2201\",\"title\":\"County Road 12 Repaving\",\"due\":\"2026-07-20\"},{\"id\":\"BID-2202\",\"title\":\"Highway 9 Paving Overlay\",\"due\":\"2026-07-25\"}]}"
+    }
+  ],
+  "expected": {
+    "idealNextToolCall": {
+      "name": "progress_read",
+      "args": {}
+    },
+    "antiPatterns": [
+      {
+        "match": "click({text:\"Next\"})",
+        "reason": "Third identical-results Next click in a row — the paginator is stuck, not slow. This is the exact loop-bait pattern the government-procurement adapter note calls out."
+      },
+      {
+        "match": "get_accessibility_tree",
+        "reason": "Should already have the row data from extract_data; re-scanning via raw AX tree does not fix a stuck paginator."
+      }
+    ],
+    "successRubric": "After 2 identical extract_data results in a row post-pagination, the agent should recognize the paginator is stuck (not click Next a 3rd time), check its own ledger (progress_read) for what it has so far, and report the stall rather than looping."
+  }
+}

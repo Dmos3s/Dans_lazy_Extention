@@ -304,6 +304,8 @@ if (globalThis.chrome?.storage?.onChanged) {
 const messagesEl = document.getElementById('messages');
 const inputEl = document.getElementById('user-input');
 const inputHighlightEl = document.getElementById('input-highlight');
+const attachStripEl = document.getElementById('attach-strip');
+const inputWrapperEl = document.getElementById('input-wrapper');
 const sendBtn = document.getElementById('btn-send');
 const clearBtn = document.getElementById('btn-clear');
 const settingsBtn = document.getElementById('btn-settings');
@@ -2578,7 +2580,9 @@ function updateApiBadge() {
 
 async function sendMessage(extraChatParams) {
   let text = inputEl.value.trim();
-  if (!text) return;
+  // An image-only send is valid: pasted screenshot with no typed text.
+  if (!text && !pendingImages.length) return;
+  if (!text) text = '(See the attached screenshot.)';
   const tabId = currentTabId;
   if (isProcessing) {
     if (!isOutOfBandSlashDraft(text)) {
@@ -2629,6 +2633,12 @@ async function sendMessage(extraChatParams) {
     return;
   }
 
+  // Snapshot pending image attachments for THIS send, then clear the strip.
+  // Snapshot (not reference) so a paste during a long run can't mutate an
+  // in-flight payload. Cleared only on a real dispatch — the draft-save
+  // early-return above leaves pending images intact for the next attempt.
+  const imagesForSend = pendingImages.map((p) => p.dataUrl);
+
   let assistantEl = null;
   if (renderToCurrentTab) {
     isProcessing = true;
@@ -2637,10 +2647,28 @@ async function sendMessage(extraChatParams) {
     autoResizeInput();
     syncSendButtonState();
     hideRecommendedActions();
-    addMessage('user', text);
+    const userMsgEl = addMessage('user', text);
+    if (imagesForSend.length && userMsgEl) {
+      // Echo the sent screenshots into the user bubble (v1: these thumbs
+      // don't survive a tab-switch re-render — the conversation store is
+      // text-only; noted limitation, not a data loss: the model got them).
+      const thumbs = document.createElement('div');
+      thumbs.className = 'user-attach-thumbs';
+      for (const url of imagesForSend) {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'attached screenshot';
+        thumbs.appendChild(img);
+      }
+      userMsgEl.querySelector('.message-content')?.appendChild(thumbs);
+    }
     showActivity(t('sp.activity.thinking'));
     assistantEl = addMessage('assistant', '');
     currentAssistantEl = assistantEl;
+  }
+  if (imagesForSend.length) {
+    pendingImages = [];
+    renderAttachStrip();
   }
 
   let accepted = false;
@@ -2651,6 +2679,7 @@ async function sendMessage(extraChatParams) {
       text,
       mode: modeForSend,
       apiMutationsAllowed: apiMutationsAllowedForSend,
+      images: imagesForSend.length ? imagesForSend : undefined,
       ...extraChatParams,
     });
     accepted = true;
@@ -4015,7 +4044,19 @@ function sendToBackground(action, data = {}) {
       { target: 'background', action, ...data },
       (response) => {
         if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
+          const raw = chrome.runtime.lastError.message || '';
+          // This exact Chrome message means the background's service worker
+          // was reclaimed (or the extension was reloaded) mid-run, severing
+          // the one long-lived sendMessage channel a `chat`/`chat_stream`
+          // call holds open for the whole multi-step task. It's recoverable:
+          // the conversation + progress ledger are mirrored to
+          // chrome.storage.session and survive the restart (see agent.js
+          // _persist/_hydrate) — say "continue" and it picks back up.
+          if (/message channel closed before a response was received/i.test(raw)) {
+            reject(new Error('The background service worker restarted mid-run (a long local-model turn, or an extension reload) and lost the connection for this message. Your progress is saved — send "continue" and it should pick back up close to where it left off.'));
+          } else {
+            reject(new Error(raw));
+          }
         } else if (response == null) {
           reject(new Error(`No response from Doll background for "${action}". The background script may have restarted or crashed; reload the sidebar/extension and check the extension console for the original error.`));
         } else if (response?.error) {
@@ -4150,6 +4191,116 @@ stopBtn.addEventListener('click', abortRun);
 
 
 // --- Event Listeners ---
+
+// ─── Pasted-image attachments (screenshots) ─────────────────────────
+// Paste (Cmd/Ctrl+V) or drag-drop an image into the input to attach it to
+// the next message. The image travels as a data URL through the chat
+// message → background → agent, where it becomes an image_url content
+// block on the user turn (same block format the agent's own screenshots
+// already use). Vision-capable provider required — the agent refuses
+// cleanly otherwise rather than 400ing against a text-only endpoint.
+
+const MAX_PENDING_IMAGES = 3;
+// Longest-edge cap before sending. 1600px keeps UI text in screenshots
+// legible for the vision encoder while keeping the message payload well
+// under chrome.runtime.sendMessage's practical limits.
+const MAX_IMAGE_EDGE_PX = 1600;
+let pendingImages = []; // [{ dataUrl }]
+
+function renderAttachStrip() {
+  if (!attachStripEl) return;
+  attachStripEl.innerHTML = '';
+  if (!pendingImages.length) {
+    attachStripEl.classList.add('hidden');
+    return;
+  }
+  attachStripEl.classList.remove('hidden');
+  pendingImages.forEach((p, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'attach-chip';
+    const img = document.createElement('img');
+    img.src = p.dataUrl;
+    img.alt = `attached image ${i + 1}`;
+    const rm = document.createElement('button');
+    rm.className = 'attach-remove';
+    rm.type = 'button';
+    rm.textContent = '×';
+    rm.title = 'Remove image';
+    rm.setAttribute('aria-label', 'Remove attached image');
+    rm.addEventListener('click', () => {
+      pendingImages.splice(i, 1);
+      renderAttachStrip();
+    });
+    chip.appendChild(img);
+    chip.appendChild(rm);
+    attachStripEl.appendChild(chip);
+  });
+}
+
+// Decode via createImageBitmap, downscale on a canvas if oversized, and
+// re-encode as JPEG (q=0.9 — text in screenshots stays crisp, payload
+// shrinks ~5-10× vs the raw retina PNG the OS puts on the clipboard).
+async function normalizePastedImage(blob) {
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const scale = Math.min(1, MAX_IMAGE_EDGE_PX / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+    return canvas.toDataURL('image/jpeg', 0.9);
+  } finally {
+    bitmap.close?.();
+  }
+}
+
+async function addPendingImageBlobs(blobs) {
+  for (const blob of blobs) {
+    if (pendingImages.length >= MAX_PENDING_IMAGES) {
+      showActivity(`Max ${MAX_PENDING_IMAGES} images per message`);
+      setTimeout(hideActivity, 1800);
+      break;
+    }
+    try {
+      const dataUrl = await normalizePastedImage(blob);
+      pendingImages.push({ dataUrl });
+    } catch (e) {
+      console.warn('Could not read pasted image:', e);
+    }
+  }
+  renderAttachStrip();
+}
+
+inputEl.addEventListener('paste', (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  const blobs = [];
+  for (const item of items) {
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      const f = item.getAsFile();
+      if (f) blobs.push(f);
+    }
+  }
+  if (!blobs.length) return; // plain text paste — leave it to the textarea
+  e.preventDefault();
+  addPendingImageBlobs(blobs);
+});
+
+// Drag-drop onto the input area (some screenshot tools produce a file drag,
+// not a clipboard image).
+inputWrapperEl?.addEventListener('dragover', (e) => {
+  if ([...(e.dataTransfer?.items || [])].some((i) => i.type?.startsWith('image/'))) {
+    e.preventDefault();
+  }
+});
+inputWrapperEl?.addEventListener('drop', (e) => {
+  const files = [...(e.dataTransfer?.files || [])].filter((f) => f.type.startsWith('image/'));
+  if (!files.length) return;
+  e.preventDefault();
+  addPendingImageBlobs(files);
+});
 
 sendBtn.addEventListener('click', sendMessage);
 

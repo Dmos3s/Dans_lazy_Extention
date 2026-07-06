@@ -1,0 +1,130 @@
+{
+  "id": "112",
+  "category": "general-complex-loadmore-stall",
+  "mode": "act",
+  "browser": "chrome",
+  "tab": {
+    "url": "https://forum.example.com/thread/882",
+    "title": "Thread #882 — 340 replies"
+  },
+  "description": "\"Load more replies\" button clicked twice with an identical reply count both times (network error / rate limit not surfaced as an error, just silently no-ops). Distinct from link-based Next pagination already tested — tests the same stall-recognition instinct against a button+append pattern.",
+  "seed": [
+    {
+      "role": "user",
+      "content": "[Current page context — URL: https://forum.example.com/thread/882 — Title: Thread #882 — 340 replies]\n\nLoad all the replies in this thread and summarize the most common opinion."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "l1",
+          "type": "function",
+          "function": {
+            "name": "extract_data",
+            "arguments": "{\"type\":\"tables\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "l1",
+      "name": "extract_data",
+      "content": "{\"rowCount\":40,\"note\":\"40 of 340 replies currently rendered\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "l2",
+          "type": "function",
+          "function": {
+            "name": "click",
+            "arguments": "{\"text\":\"Load more replies\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "l2",
+      "name": "click",
+      "content": "{\"success\":true}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "l3",
+          "type": "function",
+          "function": {
+            "name": "extract_data",
+            "arguments": "{\"type\":\"tables\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "l3",
+      "name": "extract_data",
+      "content": "{\"rowCount\":40,\"note\":\"40 of 340 replies currently rendered\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "Still 40 — trying again.",
+      "tool_calls": [
+        {
+          "id": "l4",
+          "type": "function",
+          "function": {
+            "name": "click",
+            "arguments": "{\"text\":\"Load more replies\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "l4",
+      "name": "click",
+      "content": "{\"success\":true}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "l5",
+          "type": "function",
+          "function": {
+            "name": "extract_data",
+            "arguments": "{\"type\":\"tables\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "l5",
+      "name": "extract_data",
+      "content": "{\"rowCount\":40,\"note\":\"40 of 340 replies currently rendered\"}"
+    }
+  ],
+  "expected": {
+    "idealNextToolCall": {
+      "name": "clarify",
+      "args": {}
+    },
+    "antiPatterns": [
+      {
+        "match": "click({text:\"Load more replies\"})",
+        "reason": "Third identical-result click on Load More — the button has stalled (silent failure, rate limit, or JS error), not slow-loaded. Retrying again wastes the step budget the same way the Next-link pagination loop does."
+      }
+    ],
+    "successRubric": "After 2 clicks producing an identical reply count (40 of 340) both times, recognize the load has stalled — surface this to the user (clarify) or summarize from the 40 replies actually available, rather than clicking Load More a 3rd time."
+  }
+}

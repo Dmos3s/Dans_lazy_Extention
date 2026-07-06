@@ -1,0 +1,52 @@
+{
+  "id": "114",
+  "category": "general-complex-datepicker",
+  "mode": "act",
+  "browser": "chrome",
+  "tab": {
+    "url": "https://booking.example.com/reserve",
+    "title": "Book a Reservation"
+  },
+  "description": "A non-native calendar date-picker (grid of day cells, not <input type=date>) requires navigating to the correct month before a day is clickable. Tests whether the model reads the currently-displayed month before clicking a day, rather than clicking day \"15\" blind and assuming it is the intended month.",
+  "seed": [
+    {
+      "role": "user",
+      "content": "[Current page context — URL: https://booking.example.com/reserve — Title: Book a Reservation]\n\nBook a reservation for August 15th."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "p1",
+          "type": "function",
+          "function": {
+            "name": "get_accessibility_tree",
+            "arguments": "{\"filter\":\"visible\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "p1",
+      "name": "get_accessibility_tree",
+      "content": "{\"nodes\":[{\"ref\":\"ref_1\",\"role\":\"heading\",\"text\":\"July 2026\"},{\"ref\":\"ref_2\",\"role\":\"button\",\"text\":\"Previous month\"},{\"ref\":\"ref_3\",\"role\":\"button\",\"text\":\"Next month\"},{\"ref\":\"ref_10\",\"role\":\"gridcell\",\"text\":\"15\"},{\"ref\":\"ref_11\",\"role\":\"gridcell\",\"text\":\"16\"}],\"notice\":\"Calendar currently displays July 2026.\"}"
+    }
+  ],
+  "expected": {
+    "idealNextToolCall": {
+      "name": "click_ax",
+      "args": {
+        "ref_id": "ref_3"
+      }
+    },
+    "antiPatterns": [
+      {
+        "match": "click_ax({ref_id:\"ref_10\"})",
+        "reason": "Day cell \"15\" belongs to the currently-displayed July grid, not August — clicking it would book the wrong month entirely without ever checking which month is shown."
+      }
+    ],
+    "successRubric": "Notice the calendar is showing July, not August, and click \"Next month\" to advance before selecting day 15 — do not click a day-15 cell while the wrong month is displayed."
+  }
+}

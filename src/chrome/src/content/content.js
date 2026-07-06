@@ -2055,6 +2055,137 @@
       'inspect_element_styles': () => inspectElementStyles(msg.params || {}),
       'wait_for_element': () => waitForElement(msg.params || {}),
       'get_selection': () => ({ text: window.getSelection()?.toString() || '' }),
+      // Composite action: open a combobox/listbox trigger, wait for its
+      // (usually React-portal-rendered) options to appear, click the one
+      // matching optionText, and self-verify by comparing the trigger's
+      // displayed label before/after. Built after this exact multi-step
+      // sequence (open → re-read tree → find portal option → click →
+      // confirm) proved to be where the local model most reliably got
+      // stuck across e2e runs — collapsing it into one deterministic,
+      // self-verifying call removes the whole fragile chain from the
+      // model's hands. Async handler — the framework awaits the Promise
+      // (see the `result instanceof Promise` check below).
+      'select_dropdown_option': async () => {
+        try {
+          const { triggerRef, optionText, textMatch } = msg.params || {};
+          if (typeof triggerRef !== 'string') {
+            return { success: false, error: 'triggerRef (a ref_id, e.g. "ref_9") is required.' };
+          }
+          if (typeof optionText !== 'string' || !optionText.trim()) {
+            return { success: false, error: 'optionText (the visible text of the option to select) is required.' };
+          }
+          if (typeof window.__wb_ax_lookup !== 'function') {
+            return { success: false, error: 'accessibility-tree.js not injected' };
+          }
+          const trigger = window.__wb_ax_lookup(triggerRef);
+          if (!trigger) {
+            let suggestions = [];
+            try { if (typeof window.__wb_ax_suggest === 'function') suggestions = window.__wb_ax_suggest(triggerRef, 6); } catch {}
+            return {
+              success: false,
+              error: `ref_id ${triggerRef} not found. Re-read get_accessibility_tree for a fresh ref_id.`,
+              suggestions,
+            };
+          }
+
+          const visible = (el) => {
+            try {
+              const r = el.getBoundingClientRect();
+              if (r.width < 1 || r.height < 1) return false;
+              const s = getComputedStyle(el);
+              return s.display !== 'none' && s.visibility !== 'hidden' && Number(s.opacity || 1) > 0;
+            } catch { return false; }
+          };
+          const norm = (s) => (s || '').trim().replace(/\s+/g, ' ');
+          const OPTION_SELECTOR = '[role="option"],[role="menuitem"],[role="listbox"] li,[role="menu"] li,[role="listbox"] > *';
+
+          const labelBefore = norm(trigger.innerText || trigger.value || trigger.getAttribute('aria-label') || '');
+
+          // Most comboboxes TOGGLE on click. If the model already opened this
+          // one itself (a natural thing to do — e.g. to look before acting)
+          // and then calls this tool, unconditionally clicking again would
+          // close it right back and this tool would fail 100% of the time
+          // against its own state, not the page's. Check for already-visible
+          // options FIRST; only click the trigger if nothing is open yet.
+          let optionEls = Array.from(document.querySelectorAll(OPTION_SELECTOR)).filter(visible);
+          if (!optionEls.length) {
+            try { trigger.scrollIntoView({ block: 'nearest' }); } catch {}
+            trigger.click();
+
+            // Poll rather than a fixed sleep: most portals mount within one
+            // frame, but animated/virtualized menus can take longer. 1.5s cap.
+            const deadline = Date.now() + 1500;
+            while (Date.now() < deadline) {
+              await new Promise((r) => setTimeout(r, 60));
+              optionEls = Array.from(document.querySelectorAll(OPTION_SELECTOR)).filter(visible);
+              if (optionEls.length) break;
+            }
+          }
+
+          if (!optionEls.length) {
+            return {
+              success: false,
+              triggerClicked: true,
+              error: `Clicked the trigger (ref_id ${triggerRef}), but no [role="option"]/[role="menuitem"]/listbox items appeared within 1.5s. This may not be a standard combobox — call get_accessibility_tree({filter:"visible"}) to see what actually opened, or it may be a native <select> (use press_keys, not this tool).`,
+            };
+          }
+
+          const wantLower = norm(optionText).toLowerCase();
+          const mode = textMatch === 'contains' ? 'contains' : textMatch === 'prefix' ? 'prefix' : 'exact';
+          const textOf = (el) => norm(el.innerText || el.textContent || '').toLowerCase();
+          let match = optionEls.find((el) => {
+            const t = textOf(el);
+            if (!t) return false;
+            if (mode === 'exact') return t === wantLower;
+            if (mode === 'prefix') return t.startsWith(wantLower);
+            return t.includes(wantLower);
+          }) || null;
+          // Exact match failing is common — labels often carry extra
+          // whitespace/icons/counts ("Alpha (12)") the model can't see from
+          // a tree dump. Fall back to contains before giving up.
+          if (!match && mode === 'exact') {
+            match = optionEls.find((el) => textOf(el).includes(wantLower)) || null;
+          }
+
+          if (!match) {
+            const available = optionEls.slice(0, 15).map((el) => norm(el.innerText || el.textContent || '')).filter(Boolean);
+            return {
+              success: false,
+              triggerClicked: true,
+              error: `Dropdown opened, but no option matched "${optionText}".`,
+              availableOptions: available,
+            };
+          }
+
+          try { match.scrollIntoView({ block: 'nearest' }); } catch {}
+          match.click();
+
+          // Self-verify: give the UI a beat to close/re-render, then compare
+          // the trigger's own displayed label. This is a built-in, semantic
+          // outcome check specific to comboboxes — stronger than a generic
+          // page-diff, since a combobox that actually selected something
+          // almost always updates its own displayed value.
+          await new Promise((r) => setTimeout(r, 200));
+          const labelAfter = norm(trigger.innerText || trigger.value || trigger.getAttribute('aria-label') || '');
+          const stillOpen = Array.from(document.querySelectorAll(OPTION_SELECTOR)).some(visible);
+          const labelChanged = labelBefore !== labelAfter;
+
+          return {
+            success: true,
+            triggerClicked: true,
+            optionClicked: norm(match.innerText || match.textContent || ''),
+            labelBefore,
+            labelAfter,
+            labelChanged,
+            listboxStillOpen: stillOpen,
+            hint: labelChanged
+              ? `Selection appears to have worked: the trigger now shows "${labelAfter}" (was "${labelBefore}").`
+              : `The trigger's displayed text did NOT change after selecting "${optionText}" (still shows "${labelAfter}"). The click may not have registered as a real selection — re-observe with get_accessibility_tree before assuming this worked.`,
+          };
+        } catch (e) {
+          return { success: false, error: 'select_dropdown_option failed: ' + (e && e.message || String(e)) };
+        }
+      },
       // ── Accessibility-tree-backed reads and actions ──────────────────
       //
       // The tree is built by src/content/accessibility-tree.js (a port of

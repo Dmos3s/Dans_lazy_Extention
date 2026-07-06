@@ -53,6 +53,7 @@ Thumbs.db
 test/llm/results/
 test/llm/results-scenarios/
 test/llm/analysis/*.xlsx
+test/e2e/results/
 # Keep scenarios, questions, expected/, lib/ as they contain test defs + runner code
 # web/ is mostly static site source; if it bloats further consider LFS or split
 

@@ -1,0 +1,96 @@
+{
+  "id": "111",
+  "category": "general-complex-combobox",
+  "mode": "act",
+  "browser": "chrome",
+  "tab": {
+    "url": "https://app.example.com/settings",
+    "title": "Settings"
+  },
+  "description": "A React-style combobox (div[role=combobox] + listbox popup, not a native <select>) for timezone. Tests whether the model correctly opens it and selects an option by ref rather than trying keyboard-only or coordinate guesses.",
+  "seed": [
+    {
+      "role": "user",
+      "content": "[Current page context — URL: https://app.example.com/settings — Title: Settings]\n\nChange the timezone setting to \"Pacific Time (US & Canada)\"."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "b1",
+          "type": "function",
+          "function": {
+            "name": "get_accessibility_tree",
+            "arguments": "{\"filter\":\"interactive\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "b1",
+      "name": "get_accessibility_tree",
+      "content": "{\"nodes\":[{\"ref\":\"ref_1\",\"role\":\"combobox\",\"text\":\"Timezone: Eastern Time (US & Canada)\",\"expanded\":false},{\"ref\":\"ref_2\",\"role\":\"button\",\"text\":\"Save changes\"}]}"
+    },
+    {
+      "role": "assistant",
+      "content": "Opening the timezone combobox.",
+      "tool_calls": [
+        {
+          "id": "b2",
+          "type": "function",
+          "function": {
+            "name": "click_ax",
+            "arguments": "{\"ref_id\":\"ref_1\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "b2",
+      "name": "click_ax",
+      "content": "{\"success\":true,\"ref_id\":\"ref_1\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "b3",
+          "type": "function",
+          "function": {
+            "name": "get_accessibility_tree",
+            "arguments": "{\"filter\":\"visible\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "b3",
+      "name": "get_accessibility_tree",
+      "content": "{\"nodes\":[{\"ref\":\"ref_1\",\"role\":\"combobox\",\"text\":\"Timezone: Eastern Time (US & Canada)\",\"expanded\":true},{\"ref\":\"ref_10\",\"role\":\"option\",\"text\":\"Eastern Time (US & Canada)\"},{\"ref\":\"ref_11\",\"role\":\"option\",\"text\":\"Central Time (US & Canada)\"},{\"ref\":\"ref_12\",\"role\":\"option\",\"text\":\"Pacific Time (US & Canada)\"},{\"ref\":\"ref_2\",\"role\":\"button\",\"text\":\"Save changes\"}]}"
+    }
+  ],
+  "expected": {
+    "idealNextToolCall": {
+      "name": "click_ax",
+      "args": {
+        "ref_id": "ref_12"
+      }
+    },
+    "antiPatterns": [
+      {
+        "match": "click_ax({ref_id:\"ref_2\"})",
+        "reason": "Clicking Save before actually selecting the new option leaves the timezone unchanged at Eastern."
+      },
+      {
+        "match": "click({x:",
+        "reason": "A coordinate guess for a freshly-opened, previously-unmeasured popup option is the exact failure mode the loop-detector targets."
+      }
+    ],
+    "successRubric": "Click the \"Pacific Time (US & Canada)\" option (ref_12) now that the popup listbox is open and its options have refs, THEN save."
+  }
+}

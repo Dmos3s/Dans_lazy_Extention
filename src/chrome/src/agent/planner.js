@@ -43,6 +43,7 @@ Rules:
   schedule: schedule_task (future/recurring work the user explicitly asked for), schedule_resume (pause CURRENT run blocked on external event)
   finish: done
 - For repeated same-kind UI mutations (for example following many users), plan visible UI first with bounded batches, verification, progress_update, and wait_for_stable pacing; do not plan one huge same-shape click/tool batch.
+- Before committing to a per-item batch loop for a LARGE task ("all", "every", hundreds of items), first check whether the site has a native bulk-selection affordance for this exact action (a "select all matching" / "select all N conversations" control, a checkbox-select-all + one bulk action, an export/CSV option, a multi-select + apply-once pattern). If one exists, plan that (scope with search/filter first, then one bulk action) instead of a per-item loop — it takes a handful of steps instead of dozens and avoids repeated context compaction. Only fall back to the per-item batch loop when the task requires per-item judgment a bulk action can't make (e.g. "reply differently to each one", "only flag the suspicious ones").
 - scheduling.tool = schedule_task when the user wants reminders, monitors, or recurring checks later.
 - scheduling.tool = schedule_resume only when the CURRENT task must pause until an external event (deploy finishes, email arrives) — not for generic waits (use wait_for_stable).
 - memory.use_progress_ledger = true for repeated per-item tasks (follow users, collect emails, process each search result). One ledger row per item.

@@ -180,6 +180,46 @@ export class Agent {
     // unrelated noise between them, catching the "click missing its target,
     // model retries forever" failure mode in 2-3 attempts instead of never.
     this.recentCoordClicks = new Map(); // tabId -> [{ key, ts }]
+    // Hard gate companion to recentCoordClicks: once a coord-click nudge
+    // fires, this flips true and BLOCKS any further coordinate click for
+    // that tab until the model actually calls a ref/tree-based observation
+    // tool (get_accessibility_tree / get_interactive_elements / extract_data)
+    // or lands a non-coordinate click (click_ax / click-by-text / set_field
+    // with ref_id). The nudge message alone is advisory — models sometimes
+    // read it and guess a new pixel anyway (observed live: repeated coord
+    // clicks on a Gmail "select all matching search" link even after the
+    // nudge told it to use get_accessibility_tree). This makes compliance
+    // mandatory instead of requested.
+    this.coordLoopMustObserve = new Map(); // tabId -> boolean
+    // Consecutive "type_text with no selector failed, nothing focused"
+    // counter — see _checkBlindTypeFocusFailure. Arms the same gate above.
+    this.recentBlindTypeFailures = new Map(); // tabId -> count
+    // Analysis-paralysis escalator: count of CONSECUTIVE observation-only
+    // tool calls (tree reads, screenshots, shadow/frame introspection…)
+    // with no state-changing action between them. The general loop detector
+    // catches repeating the SAME call; this catches the observed failure
+    // where the model cycles through DIFFERENT read-only tools forever and
+    // never acts (e2e run 2026-07-04: 10 tool calls on a "dismiss the
+    // modal" task — get_accessibility_tree ×3, get_shadow_dom,
+    // shadow_dom_query ×2, get_frames, read_page_source — zero clicks).
+    // Act-mode only; Ask mode is legitimately observation-heavy.
+    this.consecutiveObservations = new Map(); // tabId -> count
+    // Receipts: state-changing actions ACTUALLY executed this run, recorded
+    // by the harness (not the model). Read back at done() time so the final
+    // summary can be checked against ground truth — the same e2e run ended
+    // with the model claiming "I tried clicking by ref_id, clicking by
+    // text…" when the log contained zero clicks. Self-reports are not
+    // evidence; this log is. Cleared with the rest of loop state per run.
+    this.runActionLog = new Map(); // tabId -> [{ tool, ident, ok }]
+    // Outcome-check firings where NOTHING visibly changed (the strong
+    // "likely did not happen" signal) — surfaced again at done() time so a
+    // real-but-ineffective action (tool succeeded, expected outcome didn't
+    // happen) can't quietly fall out of context by summary time.
+    this.outcomeWarnings = new Map(); // tabId -> [{ tool, expect }]
+    // Armed when a Gmail "Labels"/"Move to" click didn't visibly open a
+    // menu — blocks further click/click_ax until the model re-observes or
+    // switches to drag_drop. See the gate + detection near _executeToolBatch.
+    this.gmailLabelMenuFailed = new Map(); // tabId -> boolean
     // Per-tab opt-in: when true, the agent is allowed to use API mutations
     // (POST/PUT/PATCH/DELETE via fetch_url, mutation fetch() via execute_js)
     // for steps where it judges API to be more reliable than UI. Set via
@@ -303,6 +343,7 @@ export class Agent {
       ...this.lastAutoScreenshotTs.keys(),
       ...this.lastSeenAdapter.keys(),
       ...this.recentCoordClicks.keys(),
+      ...this.coordLoopMustObserve.keys(),
       ...this.apiAllowedTabs.values(),
       ...this.apiAllowedInjected.values(),
       ...this.bulkApiMutationClicks.keys(),
@@ -343,6 +384,7 @@ export class Agent {
         lastAutoScreenshotTs: Number(!!this.lastAutoScreenshotTs.get(tabId)),
         lastSeenAdapter: Number(!!this.lastSeenAdapter.get(tabId)),
         recentCoordClicks: Number(!!this.recentCoordClicks.get(tabId)),
+        coordLoopMustObserve: this.coordLoopMustObserve.get(tabId) ? 1 : 0,
         apiAllowedTabs: this.apiAllowedTabs.has(tabId) ? 1 : 0,
         apiAllowedInjected: this.apiAllowedInjected.has(tabId) ? 1 : 0,
         bulkApiMutationClicks: Number(!!this.bulkApiMutationClicks.get(tabId)),
@@ -758,6 +800,12 @@ export class Agent {
     this.loopNudges.delete(tabId);
     this.healthyCallsSinceLoop.delete(tabId);
     this.recentCoordClicks.delete(tabId);
+    this.coordLoopMustObserve.delete(tabId);
+    this.recentBlindTypeFailures.delete(tabId);
+    this.consecutiveObservations.delete(tabId);
+    this.runActionLog.delete(tabId);
+    this.outcomeWarnings.delete(tabId);
+    this.gmailLabelMenuFailed.delete(tabId);
     this.bulkApiMutationClicks.delete(tabId);
     this.bulkApiMutationHints.delete(tabId);
     const replayFailurePrefix = `${tabId}|`;
@@ -1149,6 +1197,80 @@ export class Agent {
   }
 
   /**
+   * Companion to _checkCoordClickLoop for a different flavor of blind
+   * action: type_text called with no selector ("type into whatever's
+   * currently focused") when nothing editable is actually focused. Observed
+   * live: click_ax on a search TOGGLE button doesn't focus the input it
+   * reveals, so blind type_text fails with an explicit "no editable element
+   * is currently focused" error — and the model retried the exact same
+   * blind type_text call again instead of reading the tree for the input's
+   * own ref_id, three times in a row. Same root cause as the coordinate
+   * loop (acting blind instead of by ref_id after being told not to), so it
+   * arms the SAME coordLoopMustObserve gate and the same recovery applies.
+   */
+  _checkBlindTypeFocusFailure(tabId, fnArgs, toolResult) {
+    const isBlindType = !fnArgs?.selector;
+    const notFocused = toolResult && toolResult.success === false &&
+      /no editable element|not currently focused/i.test(String(toolResult.error || ''));
+    if (!isBlindType || !notFocused) {
+      this.recentBlindTypeFailures.delete(tabId);
+      return;
+    }
+    const count = (this.recentBlindTypeFailures.get(tabId) || 0) + 1;
+    this.recentBlindTypeFailures.set(tabId, count);
+    if (count >= 2) this.coordLoopMustObserve.set(tabId, true);
+  }
+
+  /**
+   * Resolves a ref_id's visible label by scanning backwards through the
+   * conversation for the most recent tool result that mentions it, using
+   * the exact `"<label>" [ref_N]` shape get_accessibility_tree emits. Lets
+   * click_ax be checked against the same destructive-confirmation guard as
+   * click({text}) WITHOUT an extra content-script round-trip before every
+   * click_ax call — the label is already sitting in the messages we hold.
+   * Observed live: a real model resolved "Send anyway" via the tree and
+   * called click_ax({ref_id}) instead of click({text:"Send anyway"}),
+   * silently walking around a guard that only inspected click's own text
+   * argument. Best-effort: if the ref isn't found (stale tree, ref from a
+   * different tool), returns '' and the caller treats that as "unknown,
+   * don't block" rather than failing closed.
+   */
+  _resolveRefLabelFromHistory(messages, refId) {
+    if (typeof refId !== 'string' || !refId) return '';
+    const escaped = refId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp('"([^"]*)"\\s*\\[' + escaped + '\\]');
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const content = messages[i]?.content;
+      if (typeof content !== 'string') continue;
+      const match = content.match(re);
+      if (match) return match[1];
+    }
+    return '';
+  }
+
+  /**
+   * One-line human-readable identity for a state-changing tool call, for
+   * the run's receipts log. Deliberately NEVER includes typed text — a
+   * set_field/type_ax value can be a password, and receipts get surfaced
+   * in done() results and transcripts. Targets (refs, selectors, labels,
+   * URLs) are enough to reconcile a summary against reality.
+   */
+  _describeActionForReceipt(name, args) {
+    args = args || {};
+    const target =
+      args.ref_id ? `ref ${args.ref_id}` :
+      args.fromRefId ? `${args.fromRefId} → ${args.toRefId}` :
+      args.selector ? `selector ${String(args.selector).slice(0, 60)}` :
+      args.text && (name === 'click') ? `text "${String(args.text).slice(0, 40)}"` :
+      (args.x != null && args.y != null) ? `(${args.x}, ${args.y})` :
+      args.url ? String(args.url).slice(0, 80) :
+      args.key ? `key ${String(args.key).slice(0, 20)}` :
+      args.index != null ? `index ${args.index}` :
+      '';
+    return target ? `${name} ${target}` : name;
+  }
+
+  /**
    * Add a tab to the "WebBrain" tab group — reused by both the explicit
    * `new_tab` tool and the click handler's target=_blank redirect fallback.
    *
@@ -1362,8 +1484,30 @@ export class Agent {
   // Tools whose successful completion should trigger an auto-screenshot when
   // the corresponding mode is active.
   static NAV_TOOLS = new Set(['navigate', 'new_tab', 'go_back', 'go_forward']);
-  static STATE_CHANGE_TOOLS = new Set(['navigate', 'new_tab', 'go_back', 'go_forward', 'click', 'click_ax', 'type_text', 'type_ax', 'set_field', 'press_keys', 'scroll', 'hover', 'drag_drop']);
+  static STATE_CHANGE_TOOLS = new Set(['navigate', 'new_tab', 'go_back', 'go_forward', 'click', 'click_ax', 'type_text', 'type_ax', 'set_field', 'press_keys', 'scroll', 'hover', 'drag_drop', 'select_dropdown_option']);
   static NAV_PRONE_TOOLS = new Set(['click', 'click_ax', 'navigate', 'go_back', 'go_forward', 'iframe_click']);
+  // Tools that count as "the model looked before it clicked again" for the
+  // coordLoopMustObserve hard gate — ref/tree/data lookups, plus click_ax and
+  // (non-coordinate) click, which can only succeed once a ref or exact label
+  // is known. Excludes screenshot: the model already had a screenshot before
+  // the blocked click and still guessed wrong, so a screenshot alone doesn't
+  // demonstrate it found the actual target.
+  static COORD_LOOP_CLEARING_TOOLS = new Set(['get_accessibility_tree', 'get_interactive_elements', 'extract_data', 'click_ax', 'click', 'set_field', 'type_ax', 'select_dropdown_option']);
+  // Pure-observation tools for the analysis-paralysis escalator. Anything
+  // here advances the model's UNDERSTANDING but not the TASK. Deliberately
+  // excludes wait_* (legitimately repeated while a page settles), progress_*
+  // and scratchpad_write (bookkeeping), and press_keys (can change state).
+  static OBSERVATION_TOOLS = new Set([
+    'get_accessibility_tree', 'get_interactive_elements', 'read_page',
+    'read_page_source', 'screenshot', 'full_page_screenshot', 'extract_data',
+    'get_shadow_dom', 'shadow_dom_query', 'get_frames', 'iframe_read',
+    'get_state_digest', 'get_selection', 'inspect_element_styles',
+    'get_window_info', 'hover', 'read_pdf',
+  ]);
+  // Tools whose schema carries the optional `expect` outcome-contract param
+  // (tools.js: OUTCOME_EXPECT_PARAM) — the set eligible for a before/after
+  // page-state diff when the model states one.
+  static OUTCOME_CONTRACT_TOOLS = new Set(['click', 'click_ax', 'set_field', 'type_ax', 'drag_drop']);
 
   // System prompt for the dedicated "vision model" sub-call. Kept terse and
   // format-oriented so the description is actually useful to the planning
@@ -1871,10 +2015,180 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
         }
       }
 
+      // Hard gate: block typing an IANA-reserved example domain (RFC 2606:
+      // example.com/.org/.net) into any field. These domains cannot belong
+      // to a real person — there is no legitimate scenario where the agent
+      // has a genuine credential/contact at one of them. Their appearance
+      // in a typed value means the model fabricated a placeholder instead
+      // of using a real value the user provided or asking for one.
+      // Observed live: on a session-expired login wall, the model typed
+      // "user@example.com" into the email field rather than calling
+      // clarify() to ask the user to log in. Scoped deliberately narrow
+      // (only these three reserved domains) so it can never false-positive
+      // against real user data — nobody's actual email is @example.com.
+      if (['type_ax', 'set_field', 'type_text'].includes(fnName) &&
+          typeof fnArgs?.text === 'string' &&
+          /@[\w.-]*\bexample\.(com|org|net)\b/i.test(fnArgs.text)) {
+        const denial = {
+          success: false,
+          denied: true,
+          error: `Blocked: "${fnArgs.text}" contains a reserved example domain (example.com/.org/.net per RFC 2606) — this can never be a real address, so it must be a fabricated placeholder rather than something the user actually gave you. Do not invent credentials, emails, or contact details. If you need the user's real login/email, call clarify() and ask them directly.`,
+        };
+        onUpdate('tool_call', { name: fnName, args: fnArgs });
+        onUpdate('tool_result', { name: fnName, result: denial });
+        onUpdate('warning', { message: 'Blocked a typed value containing a reserved example domain (likely fabricated).' });
+        messages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: JSON.stringify(denial),
+        });
+        continue;
+      }
+
+      // Hard gate: block clicking a destructive-confirmation button whose
+      // own label contains the word "anyway" (e.g. "Send anyway", "Post
+      // anyway", "Delete anyway", "Continue anyway") without the user
+      // explicitly confirming first. That word is one of the strongest,
+      // most site-agnostic signals in web UI that the PAGE ITSELF is
+      // warning this action might not be what the user wants — it is rare
+      // in legitimate non-confirmation UI copy, so the false-positive risk
+      // is low. Observed live: the model clicked "Send anyway" on a Gmail
+      // compose with an empty subject, with no confirmation from the user.
+      //
+      // This is intentionally a SEPARATE guard from permission-gate.js, not
+      // an addition to it: that file deliberately never inspects button
+      // text (see its own docstring — the design goal is to stay
+      // un-injectable, since a page could otherwise talk the gate out of a
+      // decision by controlling its own labels). This guard trades a sliver
+      // of that purity for catching one specific, narrow, high-signal
+      // phrase — a deliberate choice to prioritize safety here, not a
+      // silent contradiction of that file's design.
+      //
+      // Covers BOTH click({text}) and click_ax({ref_id}) — a live-model test
+      // showed the guard checking only click's own `text` argument is
+      // trivially bypassed: given an accessibility tree with `button "Send
+      // anyway" [ref_5]`, the model naturally preferred click_ax({ref_id:
+      // "ref_5"}) (the tool this codebase steers it toward everywhere else)
+      // and sailed straight through, since click_ax carries no `text` arg to
+      // inspect. _resolveRefLabelFromHistory recovers the same label from the
+      // tree text already sitting in `messages`.
+      const DESTRUCTIVE_CONFIRM_RE = /\banyway\b/i;
+      let destructiveClickLabel = '';
+      if (fnName === 'click' && typeof fnArgs?.text === 'string') {
+        destructiveClickLabel = fnArgs.text;
+      } else if (fnName === 'click_ax' && typeof fnArgs?.ref_id === 'string') {
+        destructiveClickLabel = this._resolveRefLabelFromHistory(messages, fnArgs.ref_id);
+      }
+      if (destructiveClickLabel && DESTRUCTIVE_CONFIRM_RE.test(destructiveClickLabel)) {
+        const denial = {
+          success: false,
+          denied: true,
+          error: `Blocked: "${destructiveClickLabel}" looks like a destructive-confirmation button — the word "anyway" is the page itself warning that this action might not be what the user wants (e.g. proceeding despite a missing field, an unusual amount, or an irreversible delete). Do not click through this without the user's explicit go-ahead. Call clarify(), quote the exact warning the page is showing, and wait for the user's answer before retrying.`,
+        };
+        onUpdate('tool_call', { name: fnName, args: fnArgs });
+        onUpdate('tool_result', { name: fnName, result: denial });
+        onUpdate('warning', { message: 'Blocked a destructive-confirmation click ("anyway") without explicit user go-ahead.' });
+        messages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: JSON.stringify(denial),
+        });
+        continue;
+      }
+
+      // Hard gate: once a coordinate-click nudge OR a repeated blind-type
+      // focus failure has fired for this tab, no FURTHER blind action of
+      // EITHER kind is allowed to actually execute until the model calls a
+      // ref/tree-based observation tool. A soft nudge/error message alone
+      // was observed to be non-binding — the model sometimes reads it and
+      // immediately repeats the same kind of blind guess anyway (a
+      // coordinate near the last one, or the identical no-selector
+      // type_text call). This blocks the action before it ever reaches the
+      // page, so the wasted round-trip doesn't happen at all.
+      const isBlindCoordClick = fnName === 'click' && fnArgs?.x != null && fnArgs?.y != null;
+      const isBlindTypeText = fnName === 'type_text' && !fnArgs?.selector;
+      if ((isBlindCoordClick || isBlindTypeText) && this.coordLoopMustObserve.get(tabId)) {
+        const denial = {
+          success: false,
+          denied: true,
+          error: isBlindCoordClick
+            ? `Coordinate click blocked: you are in a pixel-click loop and must call get_accessibility_tree({filter:"interactive"}) or get_interactive_elements (or extract_data for list/table content) before another coordinate click will be allowed to run. Use the ref_id it returns with click_ax, or click({text:"exact visible label"}). This gate clears itself as soon as you make that call.`
+            : `Blind type_text blocked: this exact call already failed because nothing editable was focused, and repeating it won't change that. Call get_accessibility_tree({filter:"interactive"}) to find the actual input's ref_id, then use set_field({ref_id, text, submit}) or click_ax({ref_id}) immediately followed by type_ax({ref_id, text}) — do not assume a prior click focused the field. This gate clears itself as soon as you make that call.`,
+        };
+        onUpdate('tool_call', { name: fnName, args: fnArgs });
+        onUpdate('tool_result', { name: fnName, result: denial });
+        onUpdate('warning', { message: 'Blind action blocked until the agent re-observes the page.' });
+        messages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: JSON.stringify(denial),
+        });
+        continue;
+      }
+      // Any ref/tree-based observation (or a non-coordinate click) proves the
+      // model moved off blind pixel-guessing — clear the gate above.
+      if (Agent.COORD_LOOP_CLEARING_TOOLS.has(fnName) && !(fnName === 'click' && fnArgs?.x != null && fnArgs?.y != null)) {
+        this.coordLoopMustObserve.delete(tabId);
+      }
+
+      // Hard gate: once the Gmail Labels/Move-to menu-open check (below)
+      // detects the menu didn't actually open, no FURTHER click/click_ax is
+      // allowed until the model either re-observes the page or switches to
+      // drag_drop — mirrors the same "soft nudge alone isn't binding"
+      // finding as the two gates above, applied to the specific failure
+      // mode where the model clicked the sidebar label directly (which
+      // only navigates) instead of following that advice.
+      if ((fnName === 'click' || fnName === 'click_ax') && this.gmailLabelMenuFailed.get(tabId)) {
+        const denial = {
+          success: false,
+          denied: true,
+          error: `Blocked: the Labels/Move-to menu did not open on the last attempt, and clicking is blocked until you address that. Call get_accessibility_tree({filter:"visible"}) to re-observe, or use drag_drop to drag the selected email(s) onto the target label in the left sidebar — do NOT click a sidebar label directly, it only navigates and does not apply anything. This gate clears itself as soon as you make one of those calls.`,
+        };
+        onUpdate('tool_call', { name: fnName, args: fnArgs });
+        onUpdate('tool_result', { name: fnName, result: denial });
+        onUpdate('warning', { message: 'Click blocked — Gmail Labels menu previously failed to open; re-observe or use drag_drop.' });
+        messages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: JSON.stringify(denial),
+        });
+        continue;
+      }
+      if (Agent.COORD_LOOP_CLEARING_TOOLS.has(fnName) || fnName === 'drag_drop') {
+        this.gmailLabelMenuFailed.delete(tabId);
+      }
+
       // Snapshot URL before nav-prone tools.
       let beforeUrl = '';
       if (Agent.NAV_PRONE_TOOLS.has(fnName)) {
         beforeUrl = await this._currentUrl(tabId);
+      }
+
+      // Gmail "Labels"/"Move to" menu-open verification. Deliberately NOT
+      // gated on the model opting into `expect` — it's unrealistic to
+      // expect it to remember that param for this one specific button every
+      // time, and this is exactly the button whose silent-failure led the
+      // model to click the sidebar label directly instead (which only
+      // navigates — it does not apply anything) despite the adapter note
+      // explicitly saying not to. Always snapshot before a click/click_ax
+      // while on Gmail; the after-diff + gate live further down once
+      // toolResult exists. Bounded cost: one extra CDP round-trip, only for
+      // click/click_ax, only on Gmail.
+      let gmailLabelBeforeSnapshot = '';
+      const isClickTool = fnName === 'click' || fnName === 'click_ax';
+      const onGmail = isClickTool && /mail\.google\.com/i.test(beforeUrl || '');
+      if (onGmail) {
+        gmailLabelBeforeSnapshot = await this._clickProgressSnapshot(tabId);
+      }
+
+      // Outcome contracts: snapshot page state before the call ONLY when the
+      // model actually stated an `expect` — skip the extra CDP round-trip
+      // otherwise. The after-snapshot + diff happens once we have toolResult.
+      let outcomeBeforeSnapshot = '';
+      const wantsOutcomeCheck = Agent.OUTCOME_CONTRACT_TOOLS.has(fnName) &&
+        typeof fnArgs?.expect === 'string' && fnArgs.expect.trim();
+      if (wantsOutcomeCheck) {
+        outcomeBeforeSnapshot = await this._clickProgressSnapshot(tabId);
       }
 
       onUpdate('tool_call', { name: fnName, args: fnArgs });
@@ -1887,6 +2201,27 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
       // scratchpad_write itself — the failure that made it invent file paths.
       this._pinDownloadHandles(tabId, fnName, toolResult);
       const replayTracking = this._trackBulkApiReplayResult(tabId, fnName, fnArgs, toolResult);
+
+      // Receipts + paralysis bookkeeping. State-changing tools reset the
+      // observation streak and land in the run's ground-truth action log;
+      // observation tools extend the streak. Everything else (waits,
+      // ledger ops, navigation bookkeeping) is neutral — neither extends
+      // nor resets, so a wait_for_stable between two tree reads doesn't
+      // launder the streak.
+      if (Agent.STATE_CHANGE_TOOLS.has(fnName) || fnName === 'navigate' || fnName === 'new_tab') {
+        this.consecutiveObservations.delete(tabId);
+        const log = this.runActionLog.get(tabId) || [];
+        log.push({
+          tool: fnName,
+          ident: this._describeActionForReceipt(fnName, fnArgs),
+          ok: !(toolResult?.error || toolResult?.success === false || toolResult?.denied),
+        });
+        if (log.length > 120) log.shift(); // cap; receipts are a summary, not a full trace
+        this.runActionLog.set(tabId, log);
+      } else if (Agent.OBSERVATION_TOOLS.has(fnName) &&
+                 (this.conversationModes.get(tabId) || 'act') === 'act') {
+        this.consecutiveObservations.set(tabId, (this.consecutiveObservations.get(tabId) || 0) + 1);
+      }
 
       let progressObserved = null;
       let progressAuto = null;
@@ -1975,8 +2310,40 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
           this._persist(tabId);
           continue;
         }
+        // Receipts: reconcile the model's summary against the harness's
+        // ground-truth action log. Self-reports are not evidence — the e2e
+        // run that motivated this ended with a summary claiming clicks that
+        // never happened. Machine-readable receipts always ride on the tool
+        // result; the human-visible warning only fires on a hard mismatch
+        // (zero actions executed + a summary claiming action verbs), so
+        // honest summaries stay clean.
+        const receipts = this.runActionLog.get(tabId) || [];
+        toolResult.actionsTaken = receipts.map(a => `${a.ok ? '✓' : '✗'} ${a.ident}`);
+        let summaryText = toolResult.summary || partialAssistantText || 'Task completed.';
+        const claimsAction = /\b(click|type|typ(ed|ing)|fill|submit|select|dismiss|mov(ed|ing)|label|drag|press|appli(ed|es)|enter(ed)?)\b/i.test(summaryText);
+        if (receipts.length === 0 && claimsAction) {
+          const contradiction = '\n\n⚠️ Receipts check: this summary describes actions, but the run\'s action log recorded ZERO state-changing tool calls (no clicks, typing, or navigation actually executed). Treat action claims above as unverified.';
+          summaryText += contradiction;
+          toolResult.receiptsMismatch = true;
+          onUpdate('warning', { message: 'Done summary claims actions, but no state-changing tool calls were executed this run.' });
+        }
+        // Outcome-warning surfacing: a real action can succeed (so the
+        // receipts check above stays clean) while its STATED expectation
+        // still visibly didn't happen — e.g. set_field({submit:true})
+        // reported success, but the outcome check found nothing on the page
+        // actually changed. Receipts alone can't catch this (an action DID
+        // execute); surface the raw list instead of guessing whether the
+        // summary glossed over it — that guess would be fragile text
+        // matching, this is just the ground truth.
+        const outcomeWarnings = this.outcomeWarnings.get(tabId) || [];
+        if (outcomeWarnings.length) {
+          toolResult.unresolvedOutcomeWarnings = outcomeWarnings;
+          const lines = outcomeWarnings.map(w => `  - ${w.tool}: expected "${w.expect}"`).join('\n');
+          summaryText += `\n\n⚠️ Outcome check: ${outcomeWarnings.length} action(s) this run had a stated expectation the page never visibly confirmed (nothing changed after the action):\n${lines}\nIf the summary above claims success on any of these, verify before trusting it.`;
+          onUpdate('warning', { message: `${outcomeWarnings.length} unresolved outcome-check warning(s) this run — see done() result.` });
+        }
         onUpdate('tool_result', { name: fnName, result: toolResult });
-        const finalResponse = this._appendProgressLedgerToFinal(tabId, toolResult.summary || partialAssistantText || 'Task completed.');
+        const finalResponse = this._appendProgressLedgerToFinal(tabId, summaryText);
         messages.push({
           role: 'tool',
           tool_call_id: tc.id,
@@ -2002,6 +2369,15 @@ Rules: no prose intro, no conclusion, no "this screenshot shows...", no layout d
       let coordCheck = { kind: 'none' };
       if (fnName === 'click' && fnArgs?.x != null && fnArgs?.y != null) {
         coordCheck = this._checkCoordClickLoop(tabId, fnArgs.x, fnArgs.y);
+        // Arm the hard gate on the FIRST nudge (not just at 'stop') — the
+        // whole point is to stop the loop earlier than "stop" would, which
+        // otherwise still lets 2-3 more wasted coordinate clicks through.
+        if (coordCheck.kind === 'nudge' || coordCheck.kind === 'stop') {
+          this.coordLoopMustObserve.set(tabId, true);
+        }
+      }
+      if (fnName === 'type_text') {
+        this._checkBlindTypeFocusFailure(tabId, fnArgs, toolResult);
       }
 
       // Combine: stop > nudge > none.
@@ -2081,10 +2457,69 @@ If the input still won't accept typing, the element may need a prior click_ax to
         resultContent = resultContent +
           '\n[NO PROGRESS DETECTED: The last click returned from the page, but the visible page snapshot did not change. Do not repeat the same click. Re-observe the page with get_accessibility_tree({filter:"visible"}) or screenshot({coord_aligned:true}), then choose a different target or explain the blocker.]';
         onUpdate('warning', { message: 'Click made no visible progress.' });
+      } else if (wantsOutcomeCheck && toolResult?.success !== false) {
+        // Skip when noProgress already fired above (same "nothing happened"
+        // signal, stronger and more specific) or when the tool itself
+        // reported failure (the model already knows something's wrong).
+        const outcomeCheck = await this._checkOutcomeContract(tabId, fnName, fnArgs, outcomeBeforeSnapshot);
+        if (outcomeCheck) {
+          resultContent += this._formatOutcomeContractNote(outcomeCheck);
+          onUpdate('warning', {
+            message: outcomeCheck.anyChange
+              ? 'Outcome check: page changed — verify it matches the stated expectation.'
+              : 'Outcome check: nothing visibly changed after this action.',
+          });
+          // Track the strong "likely did not happen" signal for the WHOLE
+          // run, surfaced again at done() time. Motivated by an e2e case
+          // where this exact warning fired correctly (set_field claimed
+          // success, nothing changed, ground truth confirmed the submit
+          // never registered) — but the model's final summary claimed
+          // success anyway. The zero-actions receipts check below doesn't
+          // catch this: a real action DID execute, just not the outcome
+          // claimed. This doesn't try to detect the mismatch (fragile,
+          // needs semantic matching) — it just makes sure the warning can't
+          // quietly fall out of context by the time the model writes done().
+          if (!outcomeCheck.anyChange) {
+            const list = this.outcomeWarnings.get(tabId) || [];
+            list.push({ tool: fnName, expect: outcomeCheck.expect });
+            this.outcomeWarnings.set(tabId, list);
+          }
+        }
+      }
+      // Gmail Labels/Move-to menu-open verification (see gmailLabelBeforeSnapshot
+      // above). Independent of the noProgress/outcomeCheck chain — this is a
+      // dedicated, always-on check for one specific known-fragile button,
+      // not something we wait for the model to opt into.
+      if (onGmail && toolResult?.success !== false) {
+        const clickedName = fnName === 'click' ? (fnArgs?.text || '') : (toolResult?.name || '');
+        if (/^(move to|labels?)$/i.test(String(clickedName).trim())) {
+          await new Promise((r) => setTimeout(r, 250));
+          const gmailAfterSnapshot = await this._clickProgressSnapshot(tabId);
+          const menuOpened = !!(gmailAfterSnapshot && gmailLabelBeforeSnapshot && gmailAfterSnapshot !== gmailLabelBeforeSnapshot);
+          if (!menuOpened) {
+            this.gmailLabelMenuFailed.set(tabId, true);
+            resultContent += `\n[GMAIL LABELS MENU CHECK: clicking "${clickedName}" did not visibly open a menu. Do NOT click a sidebar label directly to apply it — that only navigates to that label's view, it does NOT apply the label to your selection. Your next click/click_ax call is blocked until you either re-observe the page (get_accessibility_tree/extract_data/get_state_digest) or use drag_drop to drag the selected email(s) onto the target label in the left sidebar.]`;
+            onUpdate('warning', { message: 'Gmail Labels/Move-to menu did not open — blocking further clicks until drag_drop or re-observation.' });
+          }
+        }
       }
       if (effectiveKind === 'nudge') {
         resultContent = resultContent + '\n' + nudgeWarning;
         onUpdate('warning', { message: 'Loop detected — nudging the agent.' });
+      }
+
+      // Analysis-paralysis escalator (Act mode): DIFFERENT read-only calls
+      // in a row evade the same-call loop detector, but N observations with
+      // zero actions is still a stall. Two rungs: a redirect at 5, a
+      // forced-choice ultimatum at 8. Appended OUTSIDE the untrusted wrap,
+      // same as the loop nudges, so it reads as an instruction.
+      const obsStreak = this.consecutiveObservations.get(tabId) || 0;
+      if (obsStreak === 5) {
+        resultContent += '\n[OBSERVATION STREAK: That is 5 page-reading calls in a row with no action taken. You almost certainly already have what you need. Pick the most plausible target from the LAST tree you read and act on it now (click_ax / set_field by ref_id). If the element you are theorizing about is not in the tree, it does not exist — do not go looking for it with another read.]';
+        onUpdate('warning', { message: 'Five observations without acting — nudging toward action.' });
+      } else if (obsStreak >= 8) {
+        resultContent += '\n[ANALYSIS PARALYSIS — MANDATORY CHOICE: 8+ consecutive observations, zero actions. Reading the page again is no longer an allowed next step. Your next tool call MUST be one of: (1) a state-changing action on a ref_id you have already seen (click_ax, set_field, type_ax), (2) clarify() telling the user exactly what is blocking you, or (3) done() with an HONEST failure summary describing only what you actually did. Note: your action log for this run will be attached to done() — claims of clicks that never happened will be visibly contradicted.]';
+        onUpdate('warning', { message: 'Analysis paralysis — forcing a decision.' });
       }
 
       messages.push({
@@ -7232,7 +7667,10 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
               try { w = new URL(/^[a-z][a-z0-9+.\-]*:\/\//i.test(w) ? w : 'https://' + w).hostname; } catch (e) {}
               w = w.replace(/^www\./, '');
               const h = location.hostname.toLowerCase().replace(/^www\./, '');
-              const hostOk = !w || h === w || h.endsWith('.' + w);
+              // Hostless schemes (file:, data:, blob:, about:) have no domain to
+              // spoof — the anti-substring threat only applies to real http(s)
+              // hosts, so an empty h skips the host check and relies on substring.
+              const hostOk = !w || !h || h === w || h.endsWith('.' + w);
               if (!hostOk || !location.href.includes(filter)) {
                 return { ok: false, skipped: 'url-filter', url: location.href };
               }
@@ -7299,7 +7737,10 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
               try { w = new URL(/^[a-z][a-z0-9+.\-]*:\/\//i.test(w) ? w : 'https://' + w).hostname; } catch (e) {}
               w = w.replace(/^www\./, '');
               const h = location.hostname.toLowerCase().replace(/^www\./, '');
-              const hostOk = !w || h === w || h.endsWith('.' + w);
+              // Hostless schemes (file:, data:, blob:, about:) have no domain to
+              // spoof — the anti-substring threat only applies to real http(s)
+              // hosts, so an empty h skips the host check and relies on substring.
+              const hostOk = !w || !h || h === w || h.endsWith('.' + w);
               if (!hostOk || !location.href.includes(filter)) {
                 return { ok: false, skipped: 'url-filter', url: location.href };
               }
@@ -9172,6 +9613,7 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
       'wait_for_element': 'wait_for_element',
       'wait_for_stable': 'wait_for_stable',
       'get_selection': 'get_selection',
+      'select_dropdown_option': 'select_dropdown_option',
     };
 
     const action = actionMap[name];
@@ -9398,6 +9840,51 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
     } catch {
       return '';
     }
+  }
+
+  /**
+   * Outcome contracts: when the model states `expect` on a state-changing
+   * call (tools.js: OUTCOME_EXPECT_PARAM), capture a before/after page-state
+   * snapshot (reusing _clickProgressSnapshot's compact text/media/controls
+   * fingerprint) and report whether ANYTHING visibly changed. This can't
+   * judge whether the SPECIFIC expectation was met — that's still the
+   * model's job — but "nothing changed at all" is a mechanically reliable,
+   * zero-judgment signal that a "successful" action very likely did nothing.
+   * Motivated directly by an e2e run where set_field({submit:true}) on a
+   * shadow-DOM search returned success while the page's own ground truth
+   * showed the search was never actually submitted — the model had no
+   * signal to catch that and moved on assuming it worked.
+   */
+  async _checkOutcomeContract(tabId, fnName, fnArgs, beforeSnapshot) {
+    if (!Agent.OUTCOME_CONTRACT_TOOLS.has(fnName)) return null;
+    const expect = typeof fnArgs?.expect === 'string' ? fnArgs.expect.trim() : '';
+    if (!expect) return null;
+    await new Promise((r) => setTimeout(r, 250)); // let animations/renders settle, matches _annotateClickProgress
+    const afterSnapshot = await this._clickProgressSnapshot(tabId);
+    let before = {}, after = {};
+    try { before = JSON.parse(beforeSnapshot || '{}'); } catch {}
+    try { after = JSON.parse(afterSnapshot || '{}'); } catch {}
+    const urlChanged = before.url !== after.url;
+    const textChanged = before.text !== after.text;
+    const controlsChanged = before.controls !== after.controls;
+    const mediaChanged = before.media !== after.media;
+    const anyChange = urlChanged || textChanged || controlsChanged || mediaChanged;
+    return { expect, anyChange, urlChanged, textChanged, controlsChanged, mediaChanged };
+  }
+
+  /** Render an outcome-contract check as the instruction text appended to a tool result. */
+  _formatOutcomeContractNote(check) {
+    if (!check) return '';
+    if (!check.anyChange) {
+      return `\n[OUTCOME CHECK — LIKELY DID NOT HAPPEN: you expected "${check.expect}", but NOTHING visibly changed on the page after this action (same URL, same visible text, same control states). A tool call reporting success does not mean your expectation was met. Do not assume this worked — re-observe (get_accessibility_tree) and either try a different approach or clarify() if you're stuck.]`;
+    }
+    const changed = [
+      check.urlChanged && 'URL',
+      check.textChanged && 'visible text',
+      check.controlsChanged && 'control states (checked/expanded/selected/etc.)',
+      check.mediaChanged && 'visible media',
+    ].filter(Boolean).join(', ');
+    return `\n[OUTCOME CHECK: you expected "${check.expect}". The page DID change (${changed} differ from before). This does not by itself confirm your specific expectation — compare against what you actually expected before assuming success.]`;
   }
 
   _clickProgressIdent(toolName, args, response) {
@@ -9721,13 +10208,13 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
   }
   // ─────────────────────────────────────────────────────────────────────
 
-  async processMessage(tabId, userMessage, onUpdate = () => {}, mode = 'act') {
+  async processMessage(tabId, userMessage, onUpdate = () => {}, mode = 'act', opts = {}) {
     if (this._runningTabs.has(tabId)) {
       throw new Error('An agent run is already in progress for this tab.');
     }
     this._runningTabs.add(tabId);
     try {
-      return await this._processMessageInner(tabId, userMessage, onUpdate, mode);
+      return await this._processMessageInner(tabId, userMessage, onUpdate, mode, opts);
     } finally {
       this.currentCostState.delete(tabId);
       this._runningTabs.delete(tabId);
@@ -9735,7 +10222,41 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
     }
   }
 
-  async _processMessageInner(tabId, userMessage, onUpdate, mode) {
+  /**
+   * Attach user-supplied images (pasted/dropped screenshots from the side
+   * panel) to an enriched user message as image_url content blocks — the
+   * same block shape the agent's own auto-screenshots already use, so every
+   * provider/compaction path downstream treats them identically.
+   * Returns an error string to surface to the user when images can't be
+   * delivered (no vision-capable provider), else null.
+   */
+  _attachUserImages(enriched, images, provider, mode = 'act') {
+    const imgs = (Array.isArray(images) ? images : [])
+      .filter((u) => typeof u === 'string' && /^data:image\//.test(u))
+      .slice(0, 3);
+    if (!imgs.length) return null;
+    if (!provider?.supportsVision) {
+      return 'Your message included an image, but the active model/provider is not marked as vision-capable, so it cannot see it. Enable "Supports vision" on the provider in Settings (or switch to a vision-capable model like a VL/vision build), then resend the image.';
+    }
+    const textPart = typeof enriched.content === 'string' ? enriched.content : '';
+    // Framing note. Without it, a pasted screenshot pulls the model into
+    // "describe this image" mode — it narrates the picture and stops,
+    // instead of performing the requested task on the LIVE page. In Act
+    // mode the image is REFERENCE (what the user is pointing at / where to
+    // go), and the actual work happens on the real tab via tools. The
+    // static screenshot is NOT the thing to operate on — it can't be
+    // clicked, and its state may already be stale versus the live page.
+    const frame = mode === 'ask'
+      ? '\n\n[The user attached the image(s) below as reference for their question. Use them to answer.]'
+      : '\n\n[The user attached the image(s) below as REFERENCE for the task above — e.g. showing you the target, the current state, or where to go. It is a static screenshot: you cannot click or act inside it. To DO the task, act on the LIVE page with your tools (get_accessibility_tree / click_ax / navigate to the right site first if you are not already there). Do NOT just describe the image and stop — use it to orient, then take the real action the user asked for.]';
+    enriched.content = [
+      { type: 'text', text: textPart + frame },
+      ...imgs.map((u) => ({ type: 'image_url', image_url: { url: u } })),
+    ];
+    return null;
+  }
+
+  async _processMessageInner(tabId, userMessage, onUpdate, mode, opts = {}) {
     await this._hydrate(tabId);
     const messages = this.getConversation(tabId, mode);
     const costState = this._newCostRunState();
@@ -9749,6 +10270,14 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
     const enriched = await this._enrichUserMessageWithCurrentPage(tabId, messages, userMessage, costState);
 
     const provider = this.providerManager.getActive();
+
+    // Pasted screenshots ride the user turn as image_url blocks. Refuse
+    // early (before any LLM spend) when the provider can't see images —
+    // sending a content array to a text-only endpoint 400s midway instead.
+    if (opts?.images?.length) {
+      const imgErr = this._attachUserImages(enriched, opts.images, provider, mode);
+      if (imgErr) return imgErr;
+    }
 
     // Clear any stale abort flag before any LLM work. The planner gate makes a
     // paid LLM call and checks/consumes this flag, so a leftover flag from a
@@ -10111,13 +10640,13 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
   /**
    * Process a message with streaming output.
    */
-  async processMessageStream(tabId, userMessage, onUpdate = () => {}, mode = 'act') {
+  async processMessageStream(tabId, userMessage, onUpdate = () => {}, mode = 'act', opts = {}) {
     if (this._runningTabs.has(tabId)) {
       throw new Error('An agent run is already in progress for this tab.');
     }
     this._runningTabs.add(tabId);
     try {
-      return await this._processMessageStreamInner(tabId, userMessage, onUpdate, mode);
+      return await this._processMessageStreamInner(tabId, userMessage, onUpdate, mode, opts);
     } finally {
       this.currentCostState.delete(tabId);
       this._runningTabs.delete(tabId);
@@ -10125,7 +10654,7 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
     }
   }
 
-  async _processMessageStreamInner(tabId, userMessage, onUpdate, mode) {
+  async _processMessageStreamInner(tabId, userMessage, onUpdate, mode, opts = {}) {
     await this._hydrate(tabId);
     const messages = this.getConversation(tabId, mode);
     const costState = this._newCostRunState();
@@ -10139,6 +10668,12 @@ IMPORTANT AFTER TRIM: The detailed history of previous steps was summarized. Rel
     const enriched = await this._enrichUserMessageWithCurrentPage(tabId, messages, userMessage, costState);
 
     const provider = this.providerManager.getActive();
+
+    // Pasted screenshots — same handling as _processMessageInner.
+    if (opts?.images?.length) {
+      const imgErr = this._attachUserImages(enriched, opts.images, provider, mode);
+      if (imgErr) return imgErr;
+    }
 
     // Clear any stale abort flag before any LLM work. The planner gate makes a
     // paid LLM call and checks/consumes this flag, so a leftover flag from a

@@ -1,0 +1,34 @@
+{
+  "id": "103",
+  "category": "local-stress-post-compaction",
+  "mode": "act",
+  "browser": "chrome",
+  "tab": {
+    "url": "https://mail.google.com/mail/u/0/#inbox",
+    "title": "Inbox - Gmail"
+  },
+  "description": "History was just summarized by context compaction. A system note states 41 of ~150 items were already handled per the ledger. Agent must progress_read before re-scanning, not restart from the top.",
+  "seed": [
+    {
+      "role": "user",
+      "content": "[Current page context — URL: https://mail.google.com/mail/u/0/#inbox — Title: Inbox - Gmail]\n\n[SYSTEM: context was compacted. Summary: task = move BidNet Direct emails to BidNet label; progress ledger reports 41 of ~150 already moved as of last checkpoint. Continue the task.]\n\nkeep going"
+    }
+  ],
+  "expected": {
+    "idealNextToolCall": {
+      "name": "progress_read",
+      "args": {}
+    },
+    "antiPatterns": [
+      {
+        "match": "get_accessibility_tree",
+        "reason": "Re-scanning the inbox from scratch instead of checking the ledger first risks re-processing the 41 already-handled emails."
+      },
+      {
+        "match": "extract_data",
+        "reason": "Pulling fresh data before confirming ledger state — same re-processing risk."
+      }
+    ],
+    "successRubric": "Must call progress_read (or equivalent ledger check) immediately after a compaction note before taking any new scanning/clicking action."
+  }
+}

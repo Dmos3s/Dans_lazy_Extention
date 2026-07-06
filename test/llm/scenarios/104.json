@@ -1,0 +1,134 @@
+{
+  "id": "104",
+  "category": "local-stress-loop-bait",
+  "mode": "act",
+  "browser": "chrome",
+  "tab": {
+    "url": "https://vendor-portal.example.com/rfps?page=7",
+    "title": "RFP Listings — Page 7"
+  },
+  "description": "The agent already clicked \"Next page\" 3 times and the accessibility tree came back byte-identical each time (stuck pagination / broken infinite scroll). Should recognize the stall, not click Next a 4th time.",
+  "seed": [
+    {
+      "role": "user",
+      "content": "[Current page context — URL: https://vendor-portal.example.com/rfps?page=7 — Title: RFP Listings — Page 7]\n\nGo through every page of RFP listings and collect ones matching \"roadworks\"."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_p1",
+          "type": "function",
+          "function": {
+            "name": "click",
+            "arguments": "{\"text\":\"Next\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_p1",
+      "name": "click",
+      "content": "{\"success\":true}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_p2",
+          "type": "function",
+          "function": {
+            "name": "get_accessibility_tree",
+            "arguments": "{\"filter\":\"interactive\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_p2",
+      "name": "get_accessibility_tree",
+      "content": "{\"nodes\":[{\"ref\":\"r1\",\"role\":\"row\",\"text\":\"RFP 700 Roadworks\"},{\"ref\":\"r2\",\"role\":\"button\",\"text\":\"Next\"}]}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_p3",
+          "type": "function",
+          "function": {
+            "name": "click",
+            "arguments": "{\"text\":\"Next\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_p3",
+      "name": "click",
+      "content": "{\"success\":true}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_p4",
+          "type": "function",
+          "function": {
+            "name": "get_accessibility_tree",
+            "arguments": "{\"filter\":\"interactive\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_p4",
+      "name": "get_accessibility_tree",
+      "content": "{\"nodes\":[{\"ref\":\"r1\",\"role\":\"row\",\"text\":\"RFP 700 Roadworks\"},{\"ref\":\"r2\",\"role\":\"button\",\"text\":\"Next\"}]}"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_p5",
+          "type": "function",
+          "function": {
+            "name": "click",
+            "arguments": "{\"text\":\"Next\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_p5",
+      "name": "click",
+      "content": "{\"success\":true}"
+    },
+    {
+      "role": "user",
+      "content": "[Current page context — URL: https://vendor-portal.example.com/rfps?page=7 — Title: RFP Listings — Page 7]\n\nis it loaded?"
+    }
+  ],
+  "expected": {
+    "idealNextToolCall": {
+      "name": "clarify",
+      "args": {}
+    },
+    "antiPatterns": [
+      {
+        "match": "click({text:\"Next\"})",
+        "reason": "Identical AX tree after 3 Next-clicks means pagination is stuck/broken — clicking again is the exact retry-loop failure mode."
+      }
+    ],
+    "successRubric": "Recognize the stall (same content after repeated Next clicks) — stop, report the stall, or ask the user, rather than clicking Next again."
+  }
+}
