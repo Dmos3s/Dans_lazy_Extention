@@ -108,6 +108,8 @@ The primary threat: a malicious page crafts content that, when read by the agent
 | **Finance adapters** | Adapters with `category: 'finance'` inject extra confirmation guidance and a warning banner. |
 | **Strict secret handling** | Prevents credential exfiltration even if the model is jailbroken into quoting secrets. |
 | **Local network blocking** | When disabled (default), `fetch_url` cannot reach private/RFC1918 addresses. Cloud-metadata endpoints (169.254.169.254) are always blocked. |
+| **Destructive-confirmation click block** | Blocks clicking anything whose resolved label matches "anyway" (Send/Post/Delete/Continue anyway, …) — covers both `click({text})` and `click_ax({ref_id})`. See [local-model-reliability-guards.md](local-model-reliability-guards.md#guard-a--destructive-confirmation-click-block). |
+| **Gmail Labels/Move-to menu-failed gate** | Detects when Gmail's Labels/Move-to menu silently fails to open and blocks further clicks until the model uses `drag_drop` instead of the sidebar-navigation misfire. See [local-model-reliability-guards.md](local-model-reliability-guards.md#guard-b--gmail-labelsmove-to-menu-failed-gate). |
 
 ### What is NOT defended
 

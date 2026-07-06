@@ -63,6 +63,13 @@ vanilla JS/CSS unless there is a very strong reason to add a framework.
   permissions, and user-risk model.
 - `docs/prompt-injection-defense.md`: mandatory reading for any change that
   passes page-derived content into prompts or tool results.
+- `docs/local-model-reliability-guards.md`: the runtime guards that keep a
+  weak local model from undermining its own task (loop detection,
+  confabulation catches, destructive-click blocks, outcome verification) —
+  read before touching `_executeToolBatch` in `agent.js`, and read the
+  "Methodology" section before trusting a new guard's deterministic test
+  alone (a real live-model test caught a bypass the hand-crafted tests
+  missed entirely).
 
 ## Layout
 

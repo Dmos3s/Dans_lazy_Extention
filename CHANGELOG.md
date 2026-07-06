@@ -4,6 +4,77 @@ All notable changes to WebBrain are documented in this file.
 
 This changelog was generated from the repository Git history and release tags. Versions without a Git tag are inferred from version-bump commits and the current `package.json` / browser manifest versions.
 
+## [Unreleased] - 2026-07-06
+
+### Added
+- Paste-screenshot support in the side panel: paste/drag-drop images into the
+  chat input, downscaled client-side and attached to the next message with
+  an Act/Ask-mode-aware framing note so the model acts on the live page
+  rather than just describing the pasted image.
+- MV3 service-worker keepalive via `chrome.alarms` (30s period while any tab
+  has an active indicator) so long local-model turns don't get cut off by
+  Chrome reclaiming the worker and severing the chat message channel.
+- `select_dropdown_option` composite tool: collapses the fragile
+  open-combobox → find-portal-option → click → verify sequence into one
+  deterministic, self-verifying tool call.
+- New headless e2e harness (`test/e2e/`): the real `Agent` class driven
+  against a real Playwright page and a real local LM Studio model, no
+  extension loading required. `guard-validation.mjs` is a deterministic
+  (no-LLM) regression suite for the guards below (21 checks,
+  `npm run test:e2e-guards`).
+- 15 new scenario fixtures (`test/llm/scenarios/101-115.json`) covering
+  Gmail bulk actions, government-site pagination, and general complex-site
+  patterns (modals, shadow DOM, iframes, comboboxes, load-more stalls,
+  session expiry, datepickers, wizards).
+- A government-procurement site adapter (any `.gov` domain plus
+  BidNet/SAM.gov/PlanetBids/DemandStar/Bonfire/Public Purchase).
+- Several local-model reliability guards in `_executeToolBatch` — see
+  [docs/local-model-reliability-guards.md](docs/local-model-reliability-guards.md)
+  for the full "why," including the destructive-confirmation click block
+  (Guard A), the Gmail Labels/Move-to menu-failed gate (Guard B), the
+  analysis-paralysis escalator, action receipts, and outcome contracts +
+  outcome-warnings surfacing at `done()`.
+
+### Changed
+- Prompt tier default for local providers changed from `mid` to `full` —
+  empirically outperformed `mid`/`compact` for this local model (53/100 vs
+  44/100 on the scenario suite, 6 empty outputs at compact vs 0 at full).
+- Gmail bulk-action adapter notes rewritten to prefer
+  search → select-all-matching-search banner → one bulk action, demoting
+  per-item batching to a fallback; the planner now checks for a native
+  bulk-selection affordance before planning a per-item loop.
+
+### Fixed
+- **Guard A bypass via `click_ax`**: found through live-model testing
+  (`guard-a-live-test.mjs`) — the original guard only inspected
+  `click({text})`, but a real model resolved a "Send anyway" button through
+  the accessibility tree and called `click_ax({ref_id})` instead, sailing
+  through undetected and actually sending the email. Fixed by resolving the
+  ref's label from conversation history (`_resolveRefLabelFromHistory`) so
+  both call shapes are covered.
+- **Hostless-frame `urlFilter` bug**: `frameHostMatches` and the inline
+  copies in `iframe_click`/`iframe_type` required an exact hostname match,
+  but `file:`/`data:`/`blob:`/`about:` frame URLs have no hostname, so any
+  `urlFilter` silently rejected every frame. This stalled a real e2e run for
+  40 steps on a file://-loaded contact form and would affect any
+  local/data-URL iframe in production, not just test fixtures.
+- Two extension-breaking syntax bugs (a raw newline inside a single-quoted
+  tool description in `tools.js`, embedded literal backticks inside a
+  template literal in Firefox's `adapters.js`) that made the extension do
+  nothing on load.
+- `select_dropdown_option` no longer clobbers a dropdown the model had
+  already opened itself (previously unconditionally clicked the trigger
+  first, closing it before it could find the options).
+
+### Notes
+- Testing methodology: a deterministic guard test only proves a guard's
+  *logic* is correct for the exact call shape hand-crafted into the test —
+  it does not prove a real model will actually call the tool that way. The
+  Guard A `click_ax` bypass above passed 16/16 deterministic checks the
+  night it was written and was only caught by running the same scenario
+  against the real local model. See the "Methodology" section of
+  [docs/local-model-reliability-guards.md](docs/local-model-reliability-guards.md).
+
 ## [Unreleased] - 2026-07-03
 
 ### Added
